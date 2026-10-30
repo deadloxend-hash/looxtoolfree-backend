@@ -22,7 +22,8 @@ export default async function handler(req, res) {
         'x-api-key': process.env.PHOTOROOM_API_KEY,
         'Content-Type': req.headers['content-type'] || 'image/png'
       },
-      body: req
+      body: req,
+      duplex: 'half' // Required for streaming request bodies in modern Node.js
     });
 
     if (!response.ok) {
