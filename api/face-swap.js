@@ -1,4 +1,4 @@
-// /api/face-swap.js - Vercel Serverless Function for Magic Hour API (Polling Version)
+// /api/face-swap.js - Vercel Serverless Function for Magic Hour API
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -7,6 +7,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  // Upload Base64 to temporary hosting for direct URL access
   async function base64ToPublicUrl(base64Data, filename) {
     const matches = base64Data.match(/^data:(image\/\w+);base64,(.+)$/);
     const mimeType = matches ? matches[1] : 'image/png';
@@ -36,11 +37,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing image payload from frontend' });
     }
 
-    // 1. Upload images temporarily to get public URLs
+    // 1. Get temporary public URLs
     const sourceUrl = await base64ToPublicUrl(sourceImageBase64, 'source.png');
     const targetUrl = await base64ToPublicUrl(targetImageBase64, 'target.png');
 
-    // 2. Submit face swap job to Magic Hour
+    // 2. Submit face swap request
     const submitRes = await fetch('https://api.magichour.ai/v1/face-swap-photo', {
       method: 'POST',
       headers: {
@@ -69,12 +70,12 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Failed to retrieve job ID from Magic Hour', raw: submitData });
     }
 
-    // 3. Poll for job completion (up to 30 seconds)
+    // 3. Fast-poll status (checking every 1 second, max 8 seconds total)
     let imageUrl = null;
-    for (let i = 0; i < 10; i++) {
-      await new Promise(resolve => setTimeout(resolve, 3000)); // wait 3 seconds between checks
+    for (let i = 0; i < 8; i++) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      const statusRes = await fetch(`https://api.magichour.ai/v1/projects/${jobId}`, {
+      const statusRes = await fetch(`https://api.magichour.ai/v1/image-projects/${jobId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${process.env.MAGIC_HOUR_API_KEY}`
@@ -84,21 +85,20 @@ export default async function handler(req, res) {
       if (!statusRes.ok) continue;
       const statusData = await statusRes.json();
 
-      // Check if downloads are ready
       if (statusData.downloads && statusData.downloads.length > 0) {
         imageUrl = statusData.downloads[0];
         break;
       }
       if (statusData.status === 'failed') {
-        return res.status(500).json({ error: 'Magic Hour processing failed', raw: statusData });
+        return res.status(500).json({ error: 'Magic Hour processing failed on their servers', raw: statusData });
       }
     }
 
     if (!imageUrl) {
-      return res.status(504).json({ error: 'Timeout: Face swap took too long to process.' });
+      return res.status(504).json({ error: 'Magic Hour generation is taking longer than usual. Please try again in a few seconds.' });
     }
 
-    // 4. Download final image and stream back to frontend
+    // 4. Send final image back to frontend
     const imgRes = await fetch(imageUrl);
     const imgBuffer = await imgRes.arrayBuffer();
 
