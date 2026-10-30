@@ -7,6 +7,30 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  // Helper function to upload base64 image to temporary host
+  async function base64ToPublicUrl(base64Data, filename) {
+    const matches = base64Data.match(/^data:(image\/\w+);base64,(.+)$/);
+    const mimeType = matches ? matches[1] : 'image/png';
+    const buffer = Buffer.from(matches ? matches[2] : base64Data, 'base64');
+
+    const formData = new FormData();
+    const blob = new Blob([buffer], { type: mimeType });
+    formData.append('file', blob, filename);
+
+    const uploadRes = await fetch('https://tmpfiles.org/api/v1/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!uploadRes.ok) {
+      throw new Error(`Failed to host temporary image (${uploadRes.status})`);
+    }
+
+    const uploadJson = await uploadRes.json();
+    // Transform preview link into direct raw image link
+    return uploadJson.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+  }
+
   try {
     if (!process.env.MAGIC_HOUR_API_KEY) {
       return res.status(500).json({ error: 'CRITICAL: MAGIC_HOUR_API_KEY is missing in Vercel environment variables!' });
@@ -18,8 +42,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing image payload from frontend' });
     }
 
-    // 1. Step one with Magic Hour usually requires getting an upload URL or passing direct base64 if supported.
-    // Let's call Magic Hour's Face Swap Photo endpoint:
+    // Convert Base64 payload into direct public image URLs for Magic Hour
+    const sourceUrl = await base64ToPublicUrl(sourceImageBase64, 'source.png');
+    const targetUrl = await base64ToPublicUrl(targetImageBase64, 'target.png');
+
+    // Call Magic Hour API with direct URLs
     const response = await fetch('https://api.magichour.ai/v1/face-swap-photo', {
       method: 'POST',
       headers: {
@@ -30,8 +57,8 @@ export default async function handler(req, res) {
         name: "LOOX Face Swap",
         assets: {
           face_swap_mode: "all-faces",
-          source_file_path: sourceImageBase64,
-          target_file_path: targetImageBase64
+          source_file_path: sourceUrl,
+          target_file_path: targetUrl
         }
       })
     });
@@ -44,19 +71,18 @@ export default async function handler(req, res) {
 
     const data = JSON.parse(responseText);
 
-    // Magic Hour returns a project ID / job. If it provides output files directly or a download link:
+    // If Magic Hour immediately returns download links:
     if (data.downloads && data.downloads.length > 0) {
-      const imgUrl = data.downloads[0];
-      const imgRes = await fetch(imgUrl);
+      const imgRes = await fetch(data.downloads[0]);
       const imgBuffer = await imgRes.arrayBuffer();
       
       res.setHeader('Content-Type', 'image/png');
       return res.status(200).send(Buffer.from(imgBuffer));
     }
 
-    return res.status(500).json({ error: 'Job initiated, but no immediate download returned. Check async job flow.', raw: data });
+    return res.status(500).json({ error: 'Magic Hour job submitted but output not ready immediately.', raw: data });
 
   } catch (err) {
-    return res.status(500).json({ error: 'Internal Exception: ' + err.message });
+    return res.status(500).json({ error: 'Internal Server Error: ' + err.message });
   }
 }
