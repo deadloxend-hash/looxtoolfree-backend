@@ -1,4 +1,4 @@
-// /api/face-swap.js - Vercel Serverless Function
+// /api/face-swap.js - Vercel Serverless Function (Debug Version)
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -8,10 +8,15 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    // 1. Check if API key exists in backend runtime
+    if (!process.env.SEGMIND_API_KEY) {
+      return res.status(500).json({ error: 'CRITICAL: SEGMIND_API_KEY is missing in Vercel environment variables!' });
+    }
+
     const { sourceImageBase64, targetImageBase64 } = req.body;
 
     if (!sourceImageBase64 || !targetImageBase64) {
-      return res.status(400).json({ error: 'Missing image payload' });
+      return res.status(400).json({ error: 'Missing image payload from frontend' });
     }
 
     const cleanSource = sourceImageBase64.replace(/^data:image\/\w+;base64,/, '');
@@ -31,12 +36,19 @@ export default async function handler(req, res) {
       })
     });
 
+    const responseText = await response.text();
+
     if (!response.ok) {
-      const errText = await response.text();
-      return res.status(response.status).send(errText);
+      // Return the exact error message from Segmind or Vercel
+      return res.status(response.status).json({ error: `Segmind API Error (${response.status}): ${responseText}` });
     }
 
-    const data = await response.json();
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      return res.status(500).json({ error: 'Failed to parse JSON from Segmind response', raw: responseText });
+    }
     
     if (data.image) {
       const imgBuffer = Buffer.from(data.image, 'base64');
@@ -44,9 +56,9 @@ export default async function handler(req, res) {
       return res.status(200).send(imgBuffer);
     }
 
-    return res.status(500).json({ error: 'Invalid response structure from provider' });
+    return res.status(500).json({ error: 'Invalid response structure from provider', raw: data });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: 'Internal Exception: ' + err.message });
   }
 }
