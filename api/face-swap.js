@@ -1,111 +1,59 @@
-// /api/face-swap.js - Vercel Serverless Function for Magic Hour API
+// Async Magic Hour face-swap submission. Poll /api/face-swap-status with the returned jobId.
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Upload Base64 to temporary hosting for direct URL access
-  async function base64ToPublicUrl(base64Data, filename) {
-    const matches = base64Data.match(/^data:(image\/\w+);base64,(.+)$/);
-    const mimeType = matches ? matches[1] : 'image/png';
-    const buffer = Buffer.from(matches ? matches[2] : base64Data, 'base64');
+  const apiKey = process.env.MAGIC_HOUR_API_KEY;
+  if (!apiKey) return res.status(500).json({ error: 'Face swap is not configured. Please contact the site administrator.' });
 
-    const formData = new FormData();
-    const blob = new Blob([buffer], { type: mimeType });
-    formData.append('file', blob, filename);
-
-    const uploadRes = await fetch('https://tmpfiles.org/api/v1/upload', {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!uploadRes.ok) throw new Error(`Failed to host temporary image (${uploadRes.status})`);
-    const uploadJson = await uploadRes.json();
-    return uploadJson.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+  async function uploadImage(data, filename) {
+    if (typeof data !== 'string') throw new Error('Invalid image data.');
+    const match = data.match(/^data:(image\/(?:png|jpeg|jpg|webp));base64,([\s\S]+)$/i);
+    if (!match) throw new Error('Please upload a valid PNG, JPG, or WebP image.');
+    const bytes = Buffer.from(match[2], 'base64');
+    if (!bytes.length) throw new Error('The uploaded image is empty.');
+    const form = new FormData();
+    form.append('file', new Blob([bytes], { type: match[1] }), filename);
+    const response = await fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: form });
+    if (!response.ok) throw new Error('Temporary image upload failed (HTTP ' + response.status + ').');
+    const json = await response.json();
+    if (!json?.data?.url) throw new Error('Temporary image host did not return an image URL.');
+    return json.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
   }
 
   try {
-    if (!process.env.MAGIC_HOUR_API_KEY) {
-      return res.status(500).json({ error: 'CRITICAL: MAGIC_HOUR_API_KEY is missing in Vercel environment variables!' });
+    const body = req.body || {};
+    if (!body.sourceImageBase64 || !body.targetImageBase64) {
+      return res.status(400).json({ error: 'Upload both the source face and target photo.' });
     }
-
-    const { sourceImageBase64, targetImageBase64 } = req.body;
-    if (!sourceImageBase64 || !targetImageBase64) {
-      return res.status(400).json({ error: 'Missing image payload from frontend' });
-    }
-
-    // 1. Get temporary public URLs
-    const sourceUrl = await base64ToPublicUrl(sourceImageBase64, 'source.png');
-    const targetUrl = await base64ToPublicUrl(targetImageBase64, 'target.png');
-
-    // 2. Submit face swap request
-    const submitRes = await fetch('https://api.magichour.ai/v1/face-swap-photo', {
+    const urls = await Promise.all([
+      uploadImage(body.sourceImageBase64, 'loox-source.png'),
+      uploadImage(body.targetImageBase64, 'loox-target.png')
+    ]);
+    const response = await fetch('https://api.magichour.ai/v1/face-swap-photo', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.MAGIC_HOUR_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
+      headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name: "LOOX Face Swap",
-        assets: {
-          face_swap_mode: "all-faces",
-          source_file_path: sourceUrl,
-          target_file_path: targetUrl
-        }
+        name: 'LOOX Face Swap',
+        assets: { face_swap_mode: 'all-faces', source_file_path: urls[0], target_file_path: urls[1] }
       })
     });
-
-    const submitText = await submitRes.text();
-    if (!submitRes.ok) {
-      return res.status(submitRes.status).json({ error: `Magic Hour API Error (${submitRes.status}): ${submitText}` });
+    const raw = await response.text();
+    let data;
+    try { data = JSON.parse(raw); } catch { data = { message: raw }; }
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data.message || data.error || 'Magic Hour rejected the request (HTTP ' + response.status + ').' });
     }
+    if (!data.id) return res.status(502).json({ error: 'Magic Hour did not return a job ID. Check your Magic Hour projects before retrying.' });
 
-    const submitData = JSON.parse(submitText);
-    const jobId = submitData.id;
-
-    if (!jobId) {
-      return res.status(500).json({ error: 'Failed to retrieve job ID from Magic Hour', raw: submitData });
-    }
-
-    // 3. Fast-poll status (checking every 1 second, max 8 seconds total)
-    let imageUrl = null;
-    for (let i = 0; i < 8; i++) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const statusRes = await fetch(`https://api.magichour.ai/v1/image-projects/${jobId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${process.env.MAGIC_HOUR_API_KEY}`
-        }
-      });
-
-      if (!statusRes.ok) continue;
-      const statusData = await statusRes.json();
-
-      if (statusData.downloads && statusData.downloads.length > 0) {
-        imageUrl = statusData.downloads[0];
-        break;
-      }
-      if (statusData.status === 'failed') {
-        return res.status(500).json({ error: 'Magic Hour processing failed on their servers', raw: statusData });
-      }
-    }
-
-    if (!imageUrl) {
-      return res.status(504).json({ error: 'Magic Hour generation is taking longer than usual. Please try again in a few seconds.' });
-    }
-
-    // 4. Send final image back to frontend
-    const imgRes = await fetch(imageUrl);
-    const imgBuffer = await imgRes.arrayBuffer();
-
-    res.setHeader('Content-Type', 'image/png');
-    return res.status(200).send(Buffer.from(imgBuffer));
-
-  } catch (err) {
-    return res.status(500).json({ error: 'Internal Server Error: ' + err.message });
+    const { createHmac } = await import('node:crypto');
+    const statusToken = createHmac('sha256', apiKey).update(String(data.id)).digest('hex');
+    return res.status(202).json({ jobId: data.id, statusToken, status: data.status || 'queued', message: 'Your face swap has been queued.' });
+  } catch (error) {
+    console.error('Face swap submission error:', error);
+    return res.status(500).json({ error: error.message || 'Unable to start the face swap.' });
   }
 }
