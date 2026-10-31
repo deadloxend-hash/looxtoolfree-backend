@@ -1,8 +1,8 @@
 # LOOX media AI configuration
 
-Existing background-removal and face-swap endpoints are preserved. The new `/api/media-ai` bridge reuses `MAGIC_HOUR_API_KEY` for the documented AI Image Upscaler endpoint. No account credentials are exposed to the browser. Account credits and provider limits still apply. Jobs are submitted once, polled with an HMAC token, and downloaded through `/api/media-ai-status`.
+Existing background-removal and face-swap endpoints are preserved. The new `/api/media-ai` bridge reuses `MAGIC_HOUR_API_KEY` for the documented AI Image Upscaler endpoint, and the AI Image Editor with Qwen Edit for prompt-based photo restoration and subtle portrait retouching. Restoration/retouch output is a model interpretation, up to a 1K longest edge, and may invent detail. No account credentials are exposed to the browser. Account credits and provider limits still apply. Jobs are submitted once, polled with an HMAC token, and downloaded through `/api/media-ai-status`.
 
-For masked inpainting, outpainting, restoration or skin retouching, configure a GPU/model service implementing this contract. These tasks remain explicitly unavailable until configured; no ordinary canvas filter is advertised as a model result.
+For mask-enforced inpainting or generative outpainting, configure a GPU/model service implementing this contract. These tasks remain explicitly unavailable until configured; no ordinary canvas filter is advertised as a model result. The custom bridge can also override upscaling, restoration or retouching when explicitly enabled.
 
 Set these variables in the backend deployment environment, then redeploy:
 
