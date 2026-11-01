@@ -1,9 +1,9 @@
-import {createHmac,timingSafeEqual} from 'node:crypto';
-export default async function handler(req,res){
- const origin=req.headers.origin,allowed=(process.env.MEDIA_AI_ORIGINS||'https://deadloxend-hash.github.io').split(',').map(s=>s.trim());if(origin&&!allowed.includes(origin))return res.status(403).json({error:'Origin not allowed.'});if(origin)res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');res.setHeader('Cache-Control','no-store');if(req.method==='OPTIONS')return res.status(204).end();if(req.method!=='GET')return res.status(405).json({error:'Method not allowed.'});
- const key=process.env.MAGIC_HOUR_API_KEY,id=String(req.query?.jobId||''),token=String(req.query?.token||'');if(!key)return res.status(503).json({error:'The AI provider is not configured.'});if(!/^[A-Za-z0-9_-]{1,180}$/.test(id)||!/^[a-f0-9]{64}$/.test(token))return res.status(400).json({error:'Invalid job credentials.'});const expected=createHmac('sha256',key).update('loox-media:'+id).digest('hex');if(!timingSafeEqual(Buffer.from(token),Buffer.from(expected)))return res.status(403).json({error:'Invalid job token.'});
- try{const r=await fetch('https://api.magichour.ai/v1/image-projects/'+encodeURIComponent(id),{headers:{Authorization:'Bearer '+key},signal:AbortSignal.timeout(15000)}),j=await r.json();if(!r.ok)return res.status(502).json({error:'The AI provider could not retrieve this job.'});const status=String(j.status||'processing').toLowerCase(),download=j.downloads?.[0],url=typeof download==='string'?download:download?.url,ready=status==='complete'&&!!url;
-  if(ready&&req.query.download==='1'){if(new URL(url).protocol!=='https:')throw Error('Invalid provider download.');const image=await fetch(url,{signal:AbortSignal.timeout(20000)});if(!image.ok)throw Error('The completed image could not be downloaded.');const type=(image.headers.get('content-type')||'image/png').split(';')[0];if(!['image/png','image/jpeg','image/webp'].includes(type))throw Error('The provider returned an unsupported image format.');res.setHeader('Content-Type',type);return res.status(200).send(Buffer.from(await image.arrayBuffer()))}
-  return res.status(200).json({status,ready,terminal:['error','failed','canceled','cancelled'].includes(status),message:ready?'Your AI image is ready.':['error','failed'].includes(status)?'The AI provider could not complete this job.':'The AI model is processing your image.'});
- }catch{return res.status(502).json({error:'The job status could not be retrieved. Your job may still be running.'})}
+/* Magic Hour job polling removed. This endpoint is no longer available. */
+export default function handler(req,res){
+ res.setHeader('Cache-Control','no-store');
+ res.setHeader('Access-Control-Allow-Methods','GET,OPTIONS');
+ const origin=req.headers.origin,allow=(process.env.MEDIA_AI_ORIGINS||'https://deadloxend-hash.github.io').split(',').map(s=>s.trim());
+ if(origin&&allow.includes(origin)){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin')}
+ if(req.method==='OPTIONS')return res.status(204).end();
+ return res.status(410).json({error:'This AI job provider has been removed.'});
 }
