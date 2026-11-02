@@ -14,7 +14,7 @@ export default handler(async(req,res)=>{
   const active=subscriptions.some(s=>['pro','lifetime'].includes(s.plan)&&['active','trialing'].includes(s.status)&&(!s.ends_at||Date.parse(s.ends_at)>Date.now()));
   need(active,403,'LOOX AI Pro requires an active paid subscription. Upgrade your account to unlock it.');
  }
- await limit(user,'chat:'+model,model==='premium'?20:8,86400);
+ await limit(user,'chat:'+model,model==='premium'?20:25,86400);
  if(model==='free'){
   need(Boolean(env.GEMINI_API_KEY),503,'LOOX AI Free is awaiting service activation. Please try again later.');
   const contents=[...history.slice(-8).map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.text}]})),{role:'user',parts:[{text:message.trim()}]}];
