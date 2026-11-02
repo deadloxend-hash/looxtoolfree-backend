@@ -1,7 +1,5 @@
 # AI processing setup
 
-Magic Hour integration has been removed from LOOX Tools. The former face-swap and Magic Hour job endpoints are disabled.
+The LOOX Tools platform uses authenticated Replicate jobs, private Supabase storage and backend credit settlement. Follow [PLATFORM-SETUP.md](PLATFORM-SETUP.md) for database, Vercel, webhook and payment activation.
 
-To enable an alternative processing service for supported image tasks, configure `MEDIA_AI_URL`, `MEDIA_AI_KEY`, and `MEDIA_AI_TASKS` on the backend. Only explicitly enabled tasks are accepted.
-
-The AI tools are currently marked Coming Soon on the frontend.
+The older unauthenticated media-ai and remove-bg processing routes are retired. The frontend's local browser utilities continue to run locally.

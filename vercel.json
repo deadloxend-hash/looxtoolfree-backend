@@ -1,0 +1,4 @@
+{
+  "functions": {"api/loox*.js":{"maxDuration":120}},
+  "crons":[{"path":"/api/loox-maintenance","schedule":"19 3 * * *"}]
+}
