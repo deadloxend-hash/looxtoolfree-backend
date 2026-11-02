@@ -20,11 +20,11 @@ export default handler(async(req,res)=>{
  }
 
  // Exact LOOX tool availability questions use the verified directory rather than a model guess.
- const availabilityQuestion=/\\b(?:is there|do (?:you|we|loox) have|does (?:loox|this (?:site|website)) have|any .{0,50} tool|have a .{0,40}(?:tool|editor)|in (?:this|your|loox) (?:site|website))\\b/i.test(message);
+ const availabilityQuestion=/\b(?:is there|do (?:you|we|loox) have|does (?:loox|this (?:site|website)) have|any .{0,50} tool|have a .{0,40}(?:tool|editor)|in (?:this|your|loox) (?:site|website))\b/i.test(message);
  const candidates=toolMatches(message);
  const strongest=candidates[0];
  if(availabilityQuestion&&strongest&&strongest.score>=7){
-  return res.json({reply:'Yes. LOOX Tools has '+strongest.name+'.\\n\\nOpen it here: '+strongest.url+'\\n\\n'+strongest.note+'\\n\\nYou can also browse all tools at https://deadloxend-hash.github.io/looxtoolsfree/index.html',model});
+  return res.json({reply:'Yes. LOOX Tools has '+strongest.name+'\n\nOpen it here: '+strongest.url+'\n\n'+strongest.note+'\\n\\nYou can also browse all tools at https://deadloxend-hash.github.io/looxtoolsfree/index.html',model});
  }
  await limit(user,'chat:'+model,model==='premium'?20:25,86400);
  if(model==='free'){
