@@ -1,5 +1,9 @@
 import {env,authenticate,account,authReady,rows,handler,method,json,need,limit} from '../lib/core.js';
+import {looxKnowledge,directory,toolMatches} from '../lib/loox-knowledge.js';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const catalog=directory.map(t=>t.name+' ('+t.slug+'.html)').join(', ');
+const toolAdvice=(query)=>{const hits=toolMatches(query);return hits.length?hits.map(t=>t.name+': '+t.url+'; '+t.note).join('\n'):'No exact named tool match. Do not invent a feature or page.';};
+const systemText=query=>`You are LOOX AI Assistant, the official helpful guide for LOOX Tools. ${looxKnowledge}\nDIRECTORY OF REAL LOOX PAGES: ${catalog}\nRELEVANT TOOL LINKS: ${toolAdvice(query)}\nRules: When a visitor asks if LOOX has a feature, look in this directory; if it exists, say YES and give the exact LOOX URL (even if the chat page itself cannot edit media). For Face Blur, link https://deadloxend-hash.github.io/looxtoolsfree/face-blur.html ; it supports automatic and manual face blur. Offer short, helpful directions to use LOOX tools. Prioritize LOOX links rather than advertising unrelated competing platforms when LOOX offers a suitable tool. If the user explicitly requests external alternatives or LOOX has no relevant option, be objective and honest. Do not make up links, claim tools are working or free when their live status is unknown, or fabricate features. If the user asks unrelated general questions, answer them normally. If someone asks who made you, say LOOX integrated this assistant using a third-party AI model; answer provider questions truthfully. Keep answers concise and accurate.`;
 const friendly=(status)=>status===402?'LOOX AI chat is temporarily unavailable because the service needs processing balance. Please try again after activation.':status===429?'LOOX AI chat is busy. Please try again later.':'LOOX AI chat could not complete your response. Try again later.';
 export default handler(async(req,res)=>{
  method(req,'POST');
@@ -19,7 +23,7 @@ export default handler(async(req,res)=>{
   need(Boolean(env.GEMINI_API_KEY),503,'LOOX AI Free is awaiting service activation. Please try again later.');
   const contents=[...history.slice(-8).map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.text}]})),{role:'user',parts:[{text:message.trim()}]}];
   let result;
-  try{result=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:JSON.stringify({systemInstruction:{parts:[{text:'You are LOOX AI Assistant, a helpful AI assistant integrated into LOOX Tools. LOOX develops the user interface, not the underlying foundation model. If asked about the underlying model or provider, answer truthfully. Never claim to have completed external actions. Be helpful, accurate and concise.'}]},contents,generationConfig:{maxOutputTokens:768,temperature:0.65}}),signal:AbortSignal.timeout(45000)});}catch{need(false,503,'LOOX AI Free is temporarily unavailable. Please try again.');}
+  try{result=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:JSON.stringify({systemInstruction:{parts:[{text:systemText(message)}]},contents,generationConfig:{maxOutputTokens:768,temperature:0.65}}),signal:AbortSignal.timeout(45000)});}catch{need(false,503,'LOOX AI Free is temporarily unavailable. Please try again.');}
   if(!result.ok){console.error('LOOX free chat rejected',{status:result.status,model:'gemini-3.5-flash-lite'});need(false,result.status===429?429:503,result.status===429?'LOOX AI Free is busy or its daily allowance is exhausted. Please try again later.':'LOOX AI Free is temporarily unavailable. Please try again later.');}
   const output=await result.json();const reply=(output.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').trim();
   need(reply,503,'LOOX AI could not generate a response. Please try another question.');
@@ -31,7 +35,7 @@ export default handler(async(req,res)=>{
  const headers={'Authorization':'Bearer '+env.REPLICATE_API_TOKEN,'Content-Type':'application/json','Prefer':'wait=25'};
  const origin='https://api.replicate.com/v1/';
  let r;
- try{r=await fetch(origin+'models/meta/meta-llama-3-8b-instruct/predictions',{method:'POST',headers,body:JSON.stringify({input:{prompt,system_prompt:'You are LOOX AI Assistant, a helpful, concise assistant. Clearly state uncertainty. Do not pretend to execute external actions.',max_tokens:350,temperature:0.6}}),signal:AbortSignal.timeout(35000)});}catch{need(false,503,'LOOX AI chat is temporarily unavailable.');}
+ try{r=await fetch(origin+'models/meta/meta-llama-3-8b-instruct/predictions',{method:'POST',headers,body:JSON.stringify({input:{prompt,system_prompt:systemText(message),max_tokens:350,temperature:0.6}}),signal:AbortSignal.timeout(35000)});}catch{need(false,503,'LOOX AI chat is temporarily unavailable.');}
  if(!r.ok){console.error('LOOX chat model submission rejected',{status:r.status});need(false,r.status===429?429:503,friendly(r.status));}
  let prediction=await r.json();for(let i=0;i<9&&['starting','processing'].includes(prediction.status);i++){
  await sleep(1500);const t=await fetch(origin+'predictions/'+encodeURIComponent(prediction.id),{headers:{Authorization:'Bearer '+env.REPLICATE_API_TOKEN},signal:AbortSignal.timeout(12000)});if(!t.ok)break;prediction=await t.json();
