@@ -49,6 +49,8 @@ test('model contracts, media decoding and mask dimensions',async()=>{
  await assert.rejects(modelInput({...b,operation:'erase',mask:await make(8,9,'white')}),/match/);
  await assert.rejects(modelInput({...b,operation:'erase',mask:await make(16,10,'black')}),/Paint/);
  assert.ok((await modelInput({...b,operation:'erase',mask:source})).mask);
+ assert.equal((await modelInput({...b,operation:'fill',mask:source,prompt:'a garden'})).prompt,'a garden');
+ await assert.rejects(modelInput({...b,operation:'fill',mask:source,prompt:''}),/Describe/);
  await assert.rejects(modelInput({...b,operation:'background',image:source.replace('png','jpeg')}),/format/);
  await assert.rejects(modelInput({...b,operation:'background',image:'https://localhost'}),/Choose/);
  assert.deepEqual(await modelInput({...b,operation:'generate',prompt:' Sky ',ratio:'1:1',seed:0}),{prompt:'Sky',aspect_ratio:'1:1',num_outputs:1,output_format:'png',seed:0});

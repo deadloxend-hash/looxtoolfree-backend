@@ -9,7 +9,7 @@ create table public.loox_operations (
  id text primary key, cost integer not null check(cost>0), max_millicents integer not null check(max_millicents>0)
 );
 -- Conservative spending estimates in thousandths of one US cent. Count every submission attempt.
-insert into public.loox_operations values ('background',1,3000),('upscale2',2,4000),('upscale4',4,4000),('erase',2,6000),('generate',3,1000);
+insert into public.loox_operations values ('fill',3,8000),('background',1,3000),('upscale2',2,4000),('upscale4',4,4000),('erase',2,6000),('generate',3,1000);
 create table public.loox_profiles (user_id uuid primary key references auth.users on delete cascade, name text not null, terms_version text not null, created_at timestamptz default now(), deleting boolean not null default false);
 create table public.loox_wallets (user_id uuid primary key references public.loox_profiles on delete cascade, balance integer not null default 0 check(balance>=0), debt integer not null default 0 check(debt>=0));
 -- A keyed email fingerprint survives deletion to prevent bonus farming. No raw email here.
