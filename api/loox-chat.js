@@ -18,6 +18,14 @@ export default handler(async(req,res)=>{
   const active=subscriptions.some(s=>['pro','lifetime'].includes(s.plan)&&['active','trialing'].includes(s.status)&&(!s.ends_at||Date.parse(s.ends_at)>Date.now()));
   need(active,403,'LOOX AI Pro requires an active paid subscription. Upgrade your account to unlock it.');
  }
+
+ // Exact LOOX tool availability questions use the verified directory rather than a model guess.
+ const availabilityQuestion=/\\b(?:is there|do (?:you|we|loox) have|does (?:loox|this (?:site|website)) have|any .{0,50} tool|have a .{0,40}(?:tool|editor)|in (?:this|your|loox) (?:site|website))\\b/i.test(message);
+ const candidates=toolMatches(message);
+ const strongest=candidates[0];
+ if(availabilityQuestion&&strongest&&strongest.score>=7){
+  return res.json({reply:'Yes. LOOX Tools has '+strongest.name+'.\\n\\nOpen it here: '+strongest.url+'\\n\\n'+strongest.note+'\\n\\nYou can also browse all tools at https://deadloxend-hash.github.io/looxtoolsfree/index.html',model});
+ }
  await limit(user,'chat:'+model,model==='premium'?20:25,86400);
  if(model==='free'){
   need(Boolean(env.GEMINI_API_KEY),503,'LOOX AI Free is awaiting service activation. Please try again later.');
