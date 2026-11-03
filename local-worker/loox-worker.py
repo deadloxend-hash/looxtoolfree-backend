@@ -99,6 +99,11 @@ def generate(job):
     deadline = time.monotonic() + 105 * 60
     while time.monotonic() < deadline:
         time.sleep(4)
+        if int(time.monotonic()) % 20 < 4:
+            try:
+                backend("ping", {"modes": ["generate", "generate_video"] if VIDEO_JSON.exists() and os.getenv("LOOX_VIDEO_PROMPT_NODE") else ["generate"]})
+            except Exception:
+                pass
         entry = request(COMFY + "/history/" + urllib.parse.quote(pid, safe=""))
         history = entry.get(pid)
         if history:
