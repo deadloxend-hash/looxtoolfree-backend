@@ -54,7 +54,7 @@ export default handler(async(req,res)=>{
   const day=new Date().toISOString().slice(0,10);
   const start=day+'T00:00:00.000Z';
   const jobs=await rows('jobs',{user_id:'eq.'+u.id,created_at:'gte.'+start,
-   operation:'in.(generate,generate_video)',select:'operation',limit:'1000'});
+   operation:'in.(generate,generate_video)',state:'neq.failed',select:'operation',limit:'1000'});
   const used={generate:0,generate_video:0};
   for(const job of jobs){if(Object.hasOwn(used,job.operation))used[job.operation]++;}
   const limit=30;
