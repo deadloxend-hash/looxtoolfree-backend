@@ -49,6 +49,18 @@ export default handler(async(req,res)=>{
   const online=Boolean(aiReady()&&worker&&Date.now()-Date.parse(worker.last_seen)<90000);
   return res.json({online,model:'FLUX.1 Schnell + Wan 2.1 T2V',image:online&&worker.modes.includes('generate'),video:online&&worker.modes.includes('generate_video')});
  }
+ if(action==='quota'){
+  method(req,'GET');
+  const day=new Date().toISOString().slice(0,10);
+  const start=day+'T00:00:00.000Z';
+  const jobs=await rows('jobs',{user_id:'eq.'+u.id,created_at:'gte.'+start,
+   operation:'in.(generate,generate_video)',select:'operation',limit:'1000'});
+  const used={generate:0,generate_video:0};
+  for(const job of jobs){if(Object.hasOwn(used,job.operation))used[job.operation]++;}
+  const limit=30;
+  return res.json({limit,used,remaining:{generate:Math.max(0,limit-used.generate),
+   generate_video:Math.max(0,limit-used.generate_video)},reset_at:new Date(Date.parse(start)+86400000).toISOString()});
+ }
  if(action==='gallery'){
   method(req,'GET');
   const offset=Number(req.query.offset||0);
