@@ -35,7 +35,7 @@ export default handler(async(req,res)=>{
     const path=q.user_id+'/'+q.job_id+(q.operation==='generate_video'?'.mp4':'.png');
     const r=await supa('/storage/v1/object/upload/sign/loox-results/'+path,{method:'POST',body:'{}'});
     need(typeof r.url==='string',503,'Storage could not prepare the upload.');
-    const url=new URL(r.url,env.SUPABASE_URL.replace(/\/$/,'')+'/storage/v1/');
+    const url=new URL(env.SUPABASE_URL.replace(/\/$/,'')+'/storage/v1'+r.url);
     need(url.origin===new URL(env.SUPABASE_URL).origin&&url.pathname==='/storage/v1/object/upload/sign/loox-results/'+path&&url.searchParams.has('token'),503,'Invalid storage upload target.');
     return res.json({upload_url:url.href,path,max_bytes:q.operation==='generate_video'?40_000_000:16_000_000});
   }
