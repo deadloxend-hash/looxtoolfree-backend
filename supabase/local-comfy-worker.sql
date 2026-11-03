@@ -84,3 +84,26 @@ revoke all on function public.loox_local_complete(uuid,uuid,text) from public,an
 revoke all on function public.loox_local_expire() from public,anon,authenticated;
 grant execute on function public.loox_local_ping(text[]),public.loox_local_claim(),
   public.loox_local_complete(uuid,uuid,text),public.loox_local_expire() to service_role;
+
+
+-- Workers advertise their installed workflows; never lease incompatible jobs.
+create or replace function public.loox_local_claim(p_modes text[]) returns jsonb language plpgsql set search_path='' as $$
+declare rec record; token uuid;
+begin
+  select q.job_id,q.user_id,q.operation,q.input into rec
+  from public.loox_local_queue q join public.loox_jobs j on j.id=q.job_id
+  where j.state in ('reserved','processing')
+    and q.operation=any(p_modes)
+    and (q.lease is null or q.leased_at < now()-interval '2 hours')
+    and q.created_at > now()-interval '4 hours'
+  order by q.created_at for update of q skip locked limit 1;
+  if not found then return null; end if;
+  token:=gen_random_uuid();
+  update public.loox_local_queue set lease=token,leased_at=now() where job_id=rec.job_id;
+  update public.loox_jobs set state='processing' where id=rec.job_id and state in ('reserved','processing');
+  return jsonb_build_object('id',rec.job_id,'user_id',rec.user_id,'operation',rec.operation,'input',rec.input,'lease',token);
+end $$;
+revoke all on function public.loox_local_claim(text[]) from public,anon,authenticated;
+grant execute on function public.loox_local_claim(text[]) to service_role;
+revoke all on function public.loox_local_claim() from public,anon,authenticated;
+drop function public.loox_local_claim();
