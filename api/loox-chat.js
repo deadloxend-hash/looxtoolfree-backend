@@ -1,4 +1,4 @@
-import {env,authenticate,account,authReady,rows,handler,method,json,need,limit} from '../lib/core.js';
+import {env,authenticate,account,authReady,rows,supa,uuid,handler,method,json,need,limit} from '../lib/core.js';
 import {looxKnowledge,directory,toolMatches} from '../lib/loox-knowledge.js';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const catalog=directory.map(t=>t.name+' ('+t.slug+'.html)').join(', ');
@@ -11,10 +11,36 @@ export default handler(async(req,res)=>{
  const user=await authenticate(req);await account(user);
  const quota=async kind=>{const maximum=kind==='premium'?20:25;try{const data=await rows('limits',{key:'eq.chat:'+kind+':'+user.id,select:'used,expires_at',limit:'1'});const entry=data[0];const valid=entry&&Date.parse(entry.expires_at)>Date.now();return {remaining:Math.max(0,maximum-(valid?entry.used:0)),limit:maximum,resetAt:valid?entry.expires_at:null,model:kind};}catch{return {remaining:null,limit:maximum,resetAt:null,model:kind}}};
  if(req.method==='GET'){return res.json({free:await quota('free'),premium:await quota('premium')});}
- const {message,history=[],model='free'}=json(req);
+ const {message,history=[],model='free',threadId=null}=json(req);
  need(['free','premium'].includes(model),400,'Choose a valid LOOX chat model.');
  need(typeof message==='string'&&message.trim().length>=1&&message.length<=1800,400,'Enter a message up to 1,800 characters.');
  need(Array.isArray(history)&&history.length<=12&&history.every(m=>m&&['user','assistant'].includes(m.role)&&typeof m.text==='string'&&m.text.length<=1600),400,'Invalid conversation.');
+ // An authenticated account's own saved thread is the authoritative context.
+ let contextMessages=history;
+ let ownedThread=null;
+ if(threadId!==null){
+  need(typeof threadId==='string'&&uuid.test(threadId),400,'Invalid chat ID.');
+  [ownedThread]=await rows('chat_threads',{id:'eq.'+threadId,user_id:'eq.'+user.id,
+   select:'id,title,model',limit:'1'});
+  need(ownedThread&&ownedThread.model===model,403,'Chat does not belong to this model or account.');
+  const prev=await rows('chat_messages',{thread_id:'eq.'+threadId,
+   select:'role,content',order:'id.desc',limit:'12'});
+  contextMessages=prev.reverse().map(m=>({role:m.role,text:m.content}));
+ }
+ const persist=async(reply)=>{
+  if(!ownedThread)return;
+  await supa('/rest/v1/loox_chat_messages',{method:'POST',
+   body:JSON.stringify({thread_id:ownedThread.id,role:'assistant',content:reply.slice(0,6000)})});
+  await supa('/rest/v1/loox_chat_threads?'+new URLSearchParams({
+   id:'eq.'+ownedThread.id,user_id:'eq.'+user.id}),{
+   method:'PATCH',body:JSON.stringify({updated_at:new Date().toISOString()})});
+ };
+ const respond=async(reply,selected)=>{
+  const text=String(reply||'').trim().slice(0,6000);
+  need(text,503,'LOOX AI returned an empty response.');
+  await persist(text);
+  return res.json({reply:text,model:selected,threadId:ownedThread?.id||null,usage:await quota(selected)});
+ };
  if(model==='premium'){
   const subscriptions=await rows('subscriptions',{select:'plan,status,ends_at',user_id:'eq.'+user.id,limit:'20'});
   const active=subscriptions.some(s=>['pro','lifetime'].includes(s.plan)&&['active','trialing'].includes(s.status)&&(!s.ends_at||Date.parse(s.ends_at)>Date.now()));
@@ -23,24 +49,34 @@ export default handler(async(req,res)=>{
 
  // Exact LOOX tool availability questions use the verified directory rather than a model guess.
  await limit(user,'chat:'+model,model==='premium'?20:25,86400);
+ if(ownedThread){
+  // Persist the user's message before the provider call so navigation/reload
+  // cannot silently discard a submitted message.
+  await supa('/rest/v1/loox_chat_messages',{method:'POST',
+   body:JSON.stringify({thread_id:ownedThread.id,role:'user',content:message.trim()})});
+  const patch={updated_at:new Date().toISOString()};
+  if(ownedThread.title==='New chat')patch.title=message.trim().replace(/\s+/g,' ').slice(0,96);
+  await supa('/rest/v1/loox_chat_threads?'+new URLSearchParams({
+   id:'eq.'+ownedThread.id,user_id:'eq.'+user.id}),{method:'PATCH',body:JSON.stringify(patch)});
+ }
  const availabilityQuestion=/\b(?:is there|do (?:you|we|loox) have|does (?:loox|this (?:site|website)) have|any .{0,50} tool|have a .{0,40}(?:tool|editor)|in (?:this|your|loox) (?:site|website))\b/i.test(message);
  const candidates=toolMatches(message);
  const strongest=candidates[0];
  if(availabilityQuestion&&strongest&&strongest.score>=7){
-  return res.json({usage:await quota(model),reply:'Yes. LOOX Tools has '+strongest.name+'\n\nOpen it here: '+strongest.url+'\n\n'+strongest.note+'\\n\\nYou can also browse all tools at https://deadloxend-hash.github.io/looxtoolsfree/index.html',model});
+  return respond('Yes. LOOX Tools has '+strongest.name+'\n\nOpen it here: '+strongest.url+'\n\n'+strongest.note+'\n\nYou can also browse all tools at https://deadloxend-hash.github.io/looxtoolsfree/index.html',model);
  }
  if(model==='free'){
   need(Boolean(env.GEMINI_API_KEY),503,'LOOX AI Free is awaiting service activation. Please try again later.');
-  const contents=[...history.slice(-8).map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.text}]})),{role:'user',parts:[{text:message.trim()}]}];
+  const contents=[...contextMessages.slice(-8).map(m=>({role:m.role==='assistant'?'model':'user',parts:[{text:m.text}]})),{role:'user',parts:[{text:message.trim()}]}];
   let result;
   try{result=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:JSON.stringify({systemInstruction:{parts:[{text:systemText(message)}]},contents,generationConfig:{maxOutputTokens:768,temperature:0.65}}),signal:AbortSignal.timeout(45000)});}catch{need(false,503,'LOOX AI Free is temporarily unavailable. Please try again.');}
   if(!result.ok){console.error('LOOX free chat rejected',{status:result.status,model:'gemini-3.5-flash-lite'});need(false,result.status===429?429:503,result.status===429?'LOOX AI Free is busy or its daily allowance is exhausted. Please try again later.':'LOOX AI Free is temporarily unavailable. Please try again later.');}
   const output=await result.json();const reply=(output.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').trim();
   need(reply,503,'LOOX AI could not generate a response. Please try another question.');
-  return res.json({reply:reply.slice(0,6000),model:'free',usage:await quota('free')});
+  return respond(reply,'free');
  }
  need(Boolean(env.REPLICATE_API_TOKEN),503,'LOOX AI Pro is awaiting service activation.');
- const context=history.slice(-8).map(m=>(m.role==='user'?'User':'Assistant')+': '+m.text).join('\n');
+ const context=contextMessages.slice(-8).map(m=>(m.role==='user'?'User':'Assistant')+': '+m.text).join('\n');
  const prompt=(context?context+'\n':'')+'User: '+message.trim()+'\nAssistant:';
  const headers={'Authorization':'Bearer '+env.REPLICATE_API_TOKEN,'Content-Type':'application/json','Prefer':'wait=25'};
  const origin='https://api.replicate.com/v1/';
@@ -53,5 +89,5 @@ export default handler(async(req,res)=>{
  if(prediction.status!=='succeeded'){console.error('LOOX chat not completed',{status:prediction.status});need(false,503,'LOOX AI chat could not complete your response. Try again later.');}
  const response=Array.isArray(prediction.output)?prediction.output.join(''):String(prediction.output||'');
  need(response.trim().length>0,503,'LOOX AI chat returned no response.');
- res.json({reply:response.slice(0,6000),model:'premium',usage:await quota('premium')});
+ return respond(response,'premium');
 });
