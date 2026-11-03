@@ -33,16 +33,9 @@ export default handler(async(req,res)=>{
  }
  method(req,'POST');
  const b=json(req);
- if(action==='create'){
-  need(['free','premium'].includes(b.model),400,'Invalid chat model.');
-  await limit(u,'create-chat',18,60);
-  const created=await supa('/rest/v1/loox_chat_threads',{
-   method:'POST',headers:{Prefer:'return=representation'},
-   body:JSON.stringify({user_id:u.id,model:b.model,title:'New chat'})
-  });
-  need(Array.isArray(created)&&created.length===1,503,'Could not start conversation.');
-  return res.status(201).json({thread:created[0]});
- }
+ // Creating empty threads is disabled: chats are now created only when
+ // the assistant has successfully replied and the server commits both turns.
+ if(action==='create')need(false,410,'Empty conversations cannot be saved.');
  if(action==='delete'){
   need(typeof b.id==='string'&&uuid.test(b.id),400,'Invalid chat ID.');
   await limit(u,'delete-chat',30,60);
