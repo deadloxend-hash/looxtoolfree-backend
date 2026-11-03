@@ -69,15 +69,25 @@ def build_prompt(job):
     if seed is None:
         seed = random.randint(0, 2**31 - 1)
     if video:
-        # A video workflow differs by model. Set the prompt node in worker.env after exporting it.
-        text_node = os.getenv("LOOX_VIDEO_PROMPT_NODE", "")
-        if not text_node or text_node not in graph:
-            raise ValueError("Set LOOX_VIDEO_PROMPT_NODE in worker.env to the text input node ID of video-api.json.")
-        node_inputs = graph[text_node]["inputs"]
-        key = next((k for k in ("text", "prompt", "positive_prompt") if isinstance(node_inputs.get(k), str)), None)
-        if key is None:
-            raise ValueError("The configured video prompt node has no supported text input.")
-        node_inputs[key] = prompt
+        # Wan 2.1 T2V 1.3B — exact nodes from the owner's exported workflow.
+        text_node = os.getenv("LOOX_VIDEO_PROMPT_NODE", "6")
+        if text_node not in graph or graph[text_node].get("class_type") != "CLIPTextEncode":
+            raise ValueError("Wan video prompt node is missing. Expected node 6.")
+        if graph.get("3", {}).get("class_type") != "KSampler" or graph.get("40", {}).get("class_type") != "EmptyHunyuanLatentVideo":
+            raise ValueError("Wan video sampler / latent nodes are missing.")
+        if graph.get("50", {}).get("class_type") != "SaveVideo":
+            raise ValueError("Wan video SaveVideo output node 50 is missing.")
+        graph[text_node]["inputs"]["text"] = prompt
+        graph["3"]["inputs"]["seed"] = seed
+        # Keep near the 1.3B model's native 480p pixel count. Do not
+        # expose unbounded resolutions or frame counts to website visitors.
+        sizes = {"16:9": (832, 480), "9:16": (480, 832),
+                 "1:1": (640, 640), "4:3": (768, 576),
+                 "3:4": (576, 768)}
+        width, height = sizes[job["input"].get("aspect_ratio", "16:9")]
+        graph["40"]["inputs"].update(width=width, height=height, length=33, batch_size=1)
+        graph["49"]["inputs"]["fps"] = 16
+        graph["50"]["inputs"]["format"] = "mp4"
     else:
         # Exact API workflow exported by the owner: 77=positive, 67=negative.
         if "77" not in graph or "67" not in graph or "68" not in graph or "70" not in graph:
@@ -101,7 +111,7 @@ def generate(job):
         time.sleep(4)
         if int(time.monotonic()) % 20 < 4:
             try:
-                backend("ping", {"modes": ["generate", "generate_video"] if VIDEO_JSON.exists() and os.getenv("LOOX_VIDEO_PROMPT_NODE") else ["generate"]})
+                backend("ping", {"modes": ["generate", "generate_video"] if VIDEO_JSON.exists() and os.getenv("LOOX_VIDEO_PROMPT_NODE", "6") else ["generate"]})
             except Exception:
                 pass
         entry = request(COMFY + "/history/" + urllib.parse.quote(pid, safe=""))
@@ -181,7 +191,7 @@ def main():
             supported = (["generate"] if IMAGE_JSON.exists() else []) + (
                          ["generate_video"] if VIDEO_JSON.exists() and os.getenv("LOOX_VIDEO_PROMPT_NODE") else [])
             if not supported:
-                sys.exit("Missing flux-api.json. Put your ComfyUI API workflow next to this script.")
+                sys.exit("No usable API workflow found. Place flux-api.json or video-api.json beside this script.")
             response = backend("claim", {"modes": supported})
             job = response.get("job")
             if job:
