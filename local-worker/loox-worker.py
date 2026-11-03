@@ -144,10 +144,22 @@ def run_job(job):
         result = request(upload["upload_url"], "PUT", output, {
             "Content-Type": "video/mp4" if job["operation"] == "generate_video" else "image/png",
             "x-upsert": "false"}, 120)
-        backend("complete", {"id": name, "lease": job["lease"], "success": True})
-        print("Finished:", name)
+        # Once a result is uploaded, never treat an intermittent completion
+        # request failure as a generation failure or refund the successful job.
+        for attempt in range(5):
+            try:
+                backend("complete", {"id": name, "lease": job["lease"], "success": True})
+                print("Finished and delivered:", name)
+                return
+            except Exception as settle:
+                print("Delivery confirmation retry", attempt + 1,
+                      type(settle).__name__, str(settle)[:180])
+                if attempt < 4:
+                    time.sleep(min(30, 3 * (2 ** attempt)))
+        print("Image saved in private storage; completion confirmation pending.")
+        return
     except Exception as exc:
-        print("Job failed:", type(exc).__name__, str(exc)[:300])
+        print("Generation or upload failed:", type(exc).__name__, str(exc)[:300])
         try:
             backend("complete", {"id": name, "lease": job["lease"], "success": False})
         except Exception as settle:
