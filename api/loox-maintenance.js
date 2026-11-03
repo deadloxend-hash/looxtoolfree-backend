@@ -1,8 +1,9 @@
-import {method,handler,env,need,equal,rows,supa} from '../lib/core.js';
+import {method,handler,env,need,equal,rows,supa,rpc} from '../lib/core.js';
 import {reconcile} from '../lib/jobs.js';
 export default handler(async(req,res)=>{
  method(req,'GET');need(env.CRON_SECRET&&equal(req.headers.authorization,'Bearer '+env.CRON_SECRET),401,'Unauthorized.');
- const jobs=await rows('jobs',{state:'in.(reserved,processing)',order:'created_at.asc',limit:'40'});
+ await rpc('local_expire',{});
+ const jobs=await rows('jobs',{state:'in.(reserved,processing)',prediction:'not.is.null',order:'created_at.asc',limit:'40'});
  const results=[];
  for(let i=0;i<jobs.length;i+=3)results.push(...await Promise.allSettled(jobs.slice(i,i+3).map(reconcile)));
  const finished=await rows('jobs',{state:'in.(failed,succeeded)',inputs_clean:'eq.false',select:'id,user_id',limit:'200'});
