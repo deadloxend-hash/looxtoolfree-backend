@@ -1,6 +1,7 @@
 import {env,authenticate,account,aiReady,authReady,billingReady,handler,method,limit,need,rows,rpc,supa,json} from '../lib/core.js';
 import {start,status} from '../lib/jobs.js';
 import {checkout,portal} from '../lib/billing.js';
+import {templateAction} from '../lib/templates.js';
 
 async function overview(u){
  const own={user_id:'eq.'+u.id}, recent={...own,order:'created_at.desc',limit:'40'};
@@ -32,6 +33,7 @@ async function removeAccount(u,password){
 }
 export default handler(async(req,res)=>{
  const action=req.query.action;
+ if(typeof action==='string'&&action.startsWith('template_'))return templateAction(req,res,action.slice(9));
  if(action==='config'){
   method(req,'GET');
   let plans=[],operations=[];
