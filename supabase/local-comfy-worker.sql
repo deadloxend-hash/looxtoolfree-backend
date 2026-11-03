@@ -107,3 +107,29 @@ revoke all on function public.loox_local_claim(text[]) from public,anon,authenti
 grant execute on function public.loox_local_claim(text[]) to service_role;
 revoke all on function public.loox_local_claim() from public,anon,authenticated;
 drop function public.loox_local_claim();
+
+-- Validate output existence and byte limits atomically before credit settlement.
+create or replace function public.loox_local_complete(p_id uuid,p_lease uuid,p_path text)
+returns boolean language plpgsql set search_path='' as $$
+declare q public.loox_local_queue; file_size bigint;
+begin
+  select * into q from public.loox_local_queue where job_id=p_id for update;
+  if not found or q.lease is distinct from p_lease then return false; end if;
+  if (select state from public.loox_jobs where id=p_id) not in ('processing','reserved') then return false; end if;
+  if p_path is not null then
+    if p_path is distinct from (q.user_id::text||'/'||q.job_id::text||
+      (case when q.operation='generate_video' then '.mp4' else '.png' end)) then return false; end if;
+    select (metadata->>'size')::bigint into file_size
+      from storage.objects
+      where bucket_id='loox-results' and name=p_path;
+    if coalesce(file_size,0) not between 1 and
+      (case when q.operation='generate_video' then 40000000 else 16000000 end) then
+      return false;
+    end if;
+  end if;
+  perform public.loox_finish(p_id,p_path);
+  delete from public.loox_local_queue where job_id=p_id;
+  return true;
+end $$;
+revoke all on function public.loox_local_complete(uuid,uuid,text) from public,anon,authenticated;
+grant execute on function public.loox_local_complete(uuid,uuid,text) to service_role;
