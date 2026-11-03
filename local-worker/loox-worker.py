@@ -121,7 +121,7 @@ def generate(job):
             if state.get("status_str") == "error":
                 raise RuntimeError("ComfyUI workflow failed. Check its console for node errors.")
             video = job["operation"] == "generate_video"
-            keys = ("videos", "gifs") if video else ("images",)
+            keys = ("videos", "gifs", "images") if video else ("images",)
             for output in history.get("outputs", {}).values():
                 for key in keys:
                     for item in output.get(key, []):
@@ -189,7 +189,7 @@ def main():
     while True:
         try:
             supported = (["generate"] if IMAGE_JSON.exists() else []) + (
-                         ["generate_video"] if VIDEO_JSON.exists() and os.getenv("LOOX_VIDEO_PROMPT_NODE") else [])
+                         ["generate_video"] if VIDEO_JSON.exists() else [])
             if not supported:
                 sys.exit("No usable API workflow found. Place flux-api.json or video-api.json beside this script.")
             response = backend("claim", {"modes": supported})
