@@ -25,9 +25,9 @@ export default handler(async(req,res)=>{
     select:'id,title,model,created_at,updated_at',limit:'1'});
    need(thread,404,'Chat not found.');
    const messages=await rows('chat_messages',{
-    thread_id:'eq.'+id,select:'id,role,content,created_at',order:'id.asc',limit:'200'
+    thread_id:'eq.'+id,select:'id,role,content,created_at',order:'id.desc',limit:'200'
    });
-   return res.json({thread,messages});
+   return res.json({thread,messages:messages.reverse()});
   }
   need(false,404,'Unknown history action.');
  }
