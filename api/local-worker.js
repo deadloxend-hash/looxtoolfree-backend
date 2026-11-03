@@ -42,16 +42,8 @@ export default handler(async(req,res)=>{
   if(action==='complete'){
     const q=await ownership(b);
     const path=b.success===true?q.user_id+'/'+q.job_id+(q.operation==='generate_video'?'.mp4':'.png'):null;
-    if(path){
-      // Only settle credits if the expected output exists in private storage.
-      const f=await supa('/storage/v1/object/info/loox-results/'+path);
-      // Storage /object/info returns size at the top level on current Supabase
-      // versions; older versions may include it in metadata.
-      const size=Number(f?.size ?? f?.metadata?.size);
-      need(f?.name===path && Number.isFinite(size) && size>0 &&
-        size<=(q.operation==='generate_video'?40_000_000:16_000_000),
-        422,'Generated output is missing or too large.');
-    }
+    // The database atomically verifies private storage existence, owner path,
+    // size limits, and lease before marking a job successful.
     const ok=await rpc('local_complete',{p_id:b.id,p_lease:b.lease,p_path:path});
     need(ok,409,'Job already settled or lease expired.');
     return res.json({completed:true});
