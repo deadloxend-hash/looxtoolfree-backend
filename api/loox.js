@@ -47,13 +47,14 @@ export default handler(async(req,res)=>{
   method(req,'GET');
   const [worker]=await rows('local_worker_health',{id:'eq.1',select:'modes,last_seen'});
   const online=Boolean(aiReady()&&worker&&Date.now()-Date.parse(worker.last_seen)<90000);
-  return res.json({online,model:'FLUX.1 Schnell',image:online&&worker.modes.includes('generate')});
+  return res.json({online,model:'FLUX.1 Schnell + Wan 2.1 T2V',image:online&&worker.modes.includes('generate'),video:online&&worker.modes.includes('generate_video')});
  }
  if(action==='gallery'){
   method(req,'GET');
   const offset=Number(req.query.offset||0);
   need(Number.isInteger(offset)&&offset>=0&&offset<=240,400,'Invalid history page.');
-  const jobs=await rows('jobs',{user_id:'eq.'+u.id,operation:'eq.generate',state:'eq.succeeded',
+  const operation=req.query.operation==='generate_video'?'generate_video':'generate';
+  const jobs=await rows('jobs',{user_id:'eq.'+u.id,operation:'eq.'+operation,state:'eq.succeeded',
    select:'id,prompt,created_at,result_path',order:'created_at.desc',limit:'12',offset:String(offset)});
   const items=await Promise.all(jobs.map(async j=>{
    let url=null;
