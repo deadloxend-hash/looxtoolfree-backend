@@ -1,4 +1,4 @@
-import {env,authenticate,account,authReady,rows,supa,uuid,handler,method,json,need,limit} from '../lib/core.js';
+import {env,authenticate,account,authReady,rows,rpc,uuid,handler,method,json,need,limit} from '../lib/core.js';
 import {looxKnowledge,directory,toolMatches} from '../lib/loox-knowledge.js';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const catalog=directory.map(t=>t.name+' ('+t.slug+'.html)').join(', ');
@@ -27,19 +27,18 @@ export default handler(async(req,res)=>{
    select:'role,content',order:'id.desc',limit:'12'});
   contextMessages=prev.reverse().map(m=>({role:m.role,text:m.content}));
  }
- const persist=async(reply)=>{
-  if(!ownedThread)return;
-  await supa('/rest/v1/loox_chat_messages',{method:'POST',
-   body:JSON.stringify({thread_id:ownedThread.id,role:'assistant',content:reply.slice(0,6000)})});
-  await supa('/rest/v1/loox_chat_threads?'+new URLSearchParams({
-   id:'eq.'+ownedThread.id,user_id:'eq.'+user.id}),{
-   method:'PATCH',body:JSON.stringify({updated_at:new Date().toISOString()})});
- };
+ // Commit the first chat and each later question/answer together, AFTER
+ // the model has produced a valid reply. Failed or credit-blocked requests
+ // never create threads or alter saved conversations.
  const respond=async(reply,selected)=>{
   const text=String(reply||'').trim().slice(0,6000);
   need(text,503,'LOOX AI returned an empty response.');
-  await persist(text);
-  return res.json({reply:text,model:selected,threadId:ownedThread?.id||null,usage:await quota(selected)});
+  const savedId=await rpc('chat_commit',{
+   p_user:user.id,p_thread:ownedThread?.id||null,p_model:selected,
+   p_question:message.trim(),p_answer:text
+  });
+  need(typeof savedId==='string'&&uuid.test(savedId),503,'Could not save your reply.');
+  return res.json({reply:text,model:selected,threadId:savedId,usage:await quota(selected)});
  };
  if(model==='premium'){
   const subscriptions=await rows('subscriptions',{select:'plan,status,ends_at',user_id:'eq.'+user.id,limit:'20'});
@@ -49,16 +48,6 @@ export default handler(async(req,res)=>{
 
  // Exact LOOX tool availability questions use the verified directory rather than a model guess.
  await limit(user,'chat:'+model,model==='premium'?20:25,86400);
- if(ownedThread){
-  // Persist the user's message before the provider call so navigation/reload
-  // cannot silently discard a submitted message.
-  await supa('/rest/v1/loox_chat_messages',{method:'POST',
-   body:JSON.stringify({thread_id:ownedThread.id,role:'user',content:message.trim()})});
-  const patch={updated_at:new Date().toISOString()};
-  if(ownedThread.title==='New chat')patch.title=message.trim().replace(/\s+/g,' ').slice(0,96);
-  await supa('/rest/v1/loox_chat_threads?'+new URLSearchParams({
-   id:'eq.'+ownedThread.id,user_id:'eq.'+user.id}),{method:'PATCH',body:JSON.stringify(patch)});
- }
  const availabilityQuestion=/\b(?:is there|do (?:you|we|loox) have|does (?:loox|this (?:site|website)) have|any .{0,50} tool|have a .{0,40}(?:tool|editor)|in (?:this|your|loox) (?:site|website))\b/i.test(message);
  const candidates=toolMatches(message);
  const strongest=candidates[0];
