@@ -43,6 +43,30 @@ export default handler(async(req,res)=>{
  await limit(u,'api',100);
  await account(u);
  if(action==='account'){method(req,'GET');return res.json(await overview(u));}
+ if(action==='gpu'){
+  method(req,'GET');
+  const [worker]=await rows('local_worker_health',{id:'eq.1',select:'modes,last_seen'});
+  const online=Boolean(aiReady()&&worker&&Date.now()-Date.parse(worker.last_seen)<90000);
+  return res.json({online,model:'FLUX.1 Schnell',image:online&&worker.modes.includes('generate')});
+ }
+ if(action==='gallery'){
+  method(req,'GET');
+  const offset=Number(req.query.offset||0);
+  need(Number.isInteger(offset)&&offset>=0&&offset<=240,400,'Invalid history page.');
+  const jobs=await rows('jobs',{user_id:'eq.'+u.id,operation:'eq.generate',state:'eq.succeeded',
+   select:'id,prompt,created_at,result_path',order:'created_at.desc',limit:'12',offset:String(offset)});
+  const items=await Promise.all(jobs.map(async j=>{
+   let url=null;
+   if(j.result_path){
+    try{
+     const signed=await supa('/storage/v1/object/sign/loox-results/'+j.result_path,{method:'POST',body:JSON.stringify({expiresIn:300})});
+     if(signed?.signedURL)url=env.SUPABASE_URL+'/storage/v1'+signed.signedURL;
+    }catch{}
+   }
+   return {id:j.id,prompt:j.prompt||null,created_at:j.created_at,url};
+  }));
+  return res.json({items,has_more:jobs.length===12});
+ }
  if(action==='status'){method(req,'GET');return res.json(await status(u,req.query.id));}
  method(req,'POST');const b=json(req);
  if(action==='job'){await limit(u,'submit',8);return res.status(202).json(await start(u,b));}
