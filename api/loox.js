@@ -66,7 +66,7 @@ export default handler(async(req,res)=>{
   const offset=Number(req.query.offset||0);
   need(Number.isInteger(offset)&&offset>=0&&offset<=240,400,'Invalid history page.');
   const operation=req.query.operation==='generate_video'?'generate_video':'generate';
-  const jobs=await rows('jobs',{user_id:'eq.'+u.id,operation:'eq.'+operation,state:'eq.succeeded',
+  const jobs=await rows('jobs',{user_id:'eq.'+u.id,operation:'eq.'+operation,state:'eq.succeeded',result_path:'not.is.null',
    select:'id,prompt,created_at,result_path',order:'created_at.desc',limit:'12',offset:String(offset)});
   const items=await Promise.all(jobs.map(async j=>{
    let url=null;
@@ -83,6 +83,21 @@ export default handler(async(req,res)=>{
  if(action==='status'){method(req,'GET');return res.json(await status(u,req.query.id));}
  method(req,'POST');const b=json(req);
  if(action==='job'){await limit(u,'submit',8);return res.status(202).json(await start(u,b));}
+ if(action==='delete_image'){
+  await limit(u,'delete_image',20,600);
+  need(typeof b.id==='string'&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(b.id),400,'Invalid image ID.');
+  const [job]=await rows('jobs',{id:'eq.'+b.id,user_id:'eq.'+u.id,operation:'eq.generate',
+   state:'eq.succeeded',select:'id,result_path'});
+  need(job,404,'Image not found.');
+  if(job.result_path){
+   need(job.result_path.startsWith(u.id+'/'),403,'Invalid image path.');
+   await supa('/storage/v1/object/loox-results/'+job.result_path,{method:'DELETE'});
+   await supa('/rest/v1/loox_jobs?'+new URLSearchParams({id:'eq.'+job.id,user_id:'eq.'+u.id}),{
+    method:'PATCH',body:JSON.stringify({result_path:null})
+   });
+  }
+  return res.json({deleted:true});
+ }
  if(action==='delete'){await limit(u,'delete',3,600);await removeAccount(u,b.password);return res.json({deleted:true});}
  const [profile]=await rows('profiles',{user_id:'eq.'+u.id,select:'deleting'});
  need(profile&&!profile.deleting,409,'Account deletion is in progress.');
