@@ -12,7 +12,13 @@ The new routes fail closed until required services are configured. The legacy un
 6. Generate a random 32-byte LOOX_IDENTITY_SECRET. Keep it stable. It binds checkout metadata and signup eligibility to a keyed normalized email fingerprint. Deleting and re-creating an account with the same email does not yield another bonus. Multiple separate emails remain separate eligible identities, so production signup abuse controls still matter.
 7. Run Supabase security and performance advisors after applying the schema.
 
-## Replicate
+## Current image and video generation: private ComfyUI GPU
+
+Current LOOX image and video generation requests use the Windows ComfyUI worker and the `loox_local_queue` database tables, **not Replicate**. Images are supported through the FLUX.1 Schnell API workflow; video requires a separate compatible local video workflow and remains unavailable until installed. The server returns an error when the worker is offline; there is no Replicate fallback. See `local-worker/README.md` and `supabase/local-comfy-worker.sql`.
+
+The user’s FLUX prompt is intentionally retained in the account-owned `loox_jobs.prompt` field for image history, protected by the existing own-user RLS SELECT policy; historical jobs created before the change may have no saved prompt. Private PNG files remain in the `loox-results` bucket. Do not log prompt content, credentials or generation outputs.
+
+## Legacy Replicate adapter (not active for new jobs)
 
 Set a newly rotated REPLICATE_API_TOKEN, REPLICATE_WEBHOOK_SIGNING_SECRET from the Replicate webhook signing-secret API, LOOX_BACKEND_URL, CRON_SECRET and a positive LOOX_DAILY_BUDGET_MILLICENTS. The token previously pasted in chat must be replaced by its owner.
 
@@ -25,7 +31,7 @@ Adapters use current documented official model schemas.
 | Erase | bria/eraser | image, mask |
 | Generate | black-forest-labs/flux-schnell | prompt, aspect_ratio, optional seed, num_outputs 1, output_format png |
 
-FLUX Schnell has no negative-prompt field in this adapter. Model choices and bounded settings are controlled by the backend. Prompts and media are absent from stored job records and application logs.
+Legacy adapter note: Model choices and bounded settings were controlled by the backend. Current local-generation prompts are retained privately for per-account history but are not included in application logs.
 
 Inputs are decoded and normalized by Sharp, stored in a private bucket, and shared with Replicate through 20-minute signed URLs. Only an authenticated owner can request a five-minute output URL. Outputs are normalized to PNG. Limits are 2.4 MB per incoming image, a combined JSON body below Vercel's 4.5 MB cap, four megapixels generally and one megapixel for 4x input.
 
