@@ -47,13 +47,14 @@ test('model contracts, media decoding and mask dimensions',async()=>{
  assert.equal((await modelInput({...b,operation:'upscale4'})).upscale_factor,'x4');
  assert.equal((await modelInput({...b,operation:'background'})).preserve_alpha,true);
  await assert.rejects(modelInput({...b,operation:'erase',mask:await make(8,9,'white')}),/match/);
- await assert.rejects(modelInput({...b,operation:'erase',mask:await make(16,10,'black')}),/Paint/);
+ await assert.rejects(modelInput({...b,operation:'erase',mask:await make(16,10,'black')}),/Select the area/);
  assert.ok((await modelInput({...b,operation:'erase',mask:source})).mask);
  assert.equal((await modelInput({...b,operation:'fill',mask:source,prompt:'a garden'})).prompt,'a garden');
  await assert.rejects(modelInput({...b,operation:'fill',mask:source,prompt:''}),/Describe/);
  await assert.rejects(modelInput({...b,operation:'background',image:source.replace('png','jpeg')}),/format/);
  await assert.rejects(modelInput({...b,operation:'background',image:'https://localhost'}),/Choose/);
  assert.deepEqual(await modelInput({...b,operation:'generate',prompt:' Sky ',ratio:'1:1',seed:0}),{prompt:'Sky',aspect_ratio:'1:1',num_outputs:1,output_format:'png',seed:0});
+ assert.deepEqual(await modelInput({...b,operation:'generate_video',prompt:' Fox running ',ratio:'16:9',seed:0}),{prompt:'Fox running',aspect_ratio:'16:9',num_outputs:1,output_format:'mp4',seed:0});
 });
 function response(){return {code:200,headers:{},setHeader(k,v){this.headers[k]=v;},status(n){this.code=n;return this;},json(x){this.data=x;return this;},end(){}};}
 test('unconfigured service fails closed and unapproved origins are rejected',async()=>{
@@ -66,7 +67,7 @@ test('configured boundary requires identity, owner filter and an authentic billi
  const n=response();await api({method:'POST',query:{action:'job'},headers:{}},n);assert.equal(n.code,401);
  const calls=[];t.mock.method(globalThis,'fetch',async url=>{calls.push(String(url));return Response.json([]);});
  await assert.rejects(status({id:u},randomUUID()),/not found/);assert.ok(calls[0].includes('user_id=eq.'+u));
- await assert.rejects(start({id:u},{}),/setup/);
+ await assert.rejects(start({id:u},{}),/not configured/);
  const payload=Buffer.from(JSON.stringify({meta:{event_name:'order_created'},data:{id:'10',type:'orders',attributes:{store_id:42,test_mode:true}}}));
  const invoke=async sig=>{const req=Readable.from([payload]);Object.assign(req,{method:'POST',headers:{'x-signature':sig}});const res=response();await payment(req,res);return res.code;};
  assert.equal(await invoke('forged'),403);assert.equal(await invoke(createHmac('sha256','test-signing').update(payload).digest('hex')),204);
