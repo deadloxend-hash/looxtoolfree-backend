@@ -111,7 +111,7 @@ def generate(job):
         time.sleep(4)
         if int(time.monotonic()) % 20 < 4:
             try:
-                backend("ping", {"modes": ["generate", "generate_video"] if VIDEO_JSON.exists() and os.getenv("LOOX_VIDEO_PROMPT_NODE", "6") else ["generate"]})
+                backend("ping", {"modes": (["generate"] if IMAGE_JSON.exists() else []) + (["generate_video"] if VIDEO_JSON.exists() else [])})
             except Exception:
                 pass
         entry = request(COMFY + "/history/" + urllib.parse.quote(pid, safe=""))
@@ -166,7 +166,7 @@ def run_job(job):
                       type(settle).__name__, str(settle)[:180])
                 if attempt < 4:
                     time.sleep(min(30, 3 * (2 ** attempt)))
-        print("Image saved in private storage; completion confirmation pending.")
+        print("Result saved in private storage; completion confirmation pending.")
         return
     except Exception as exc:
         print("Generation or upload failed:", type(exc).__name__, str(exc)[:300])
