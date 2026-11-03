@@ -12,6 +12,17 @@ The default `flux-api.json` is your FLUX Schnell checkpoint workflow (`flux1-sch
 
 ## Video
 
-Image-generation workflows cannot produce video. Before offering video generation, install a ComfyUI video model appropriate for the available graphics memory, verify it can render MP4 locally, export its API workflow to `video-api.json`, and set `LOOX_VIDEO_PROMPT_NODE` to the node ID containing its text prompt. The worker advertises video availability only when both conditions are met. Until then, the backend rejects video requests; it does not send them to Replicate.
+The bundled `video-api.json` contains the owner's **Wan 2.1 T2V 1.3B** API workflow. The worker now automatically uses positive prompt node **6**, seed node **3**, latent dimensions node **40**, and MP4 output node **50**. Supported proportions are 16:9 (832×480), 9:16 (480×832), 1:1 (640×640), 4:3 (768×576), and 3:4 (576×768). Video length is fixed at **33 frames / 16 fps (about 2.06 seconds)** for this initial GPU-friendly release.
+
+To enable website video generation on Windows:
+1. Update your local `local-worker` folder to include the **new** `loox-worker.py` and `video-api.json`.
+2. Keep your existing private `worker.env` file. Do **not** upload it. `LOOX_VIDEO_PROMPT_NODE=6` is optional because the exact bundled workflow uses node 6 by default.
+3. Start ComfyUI and verify you can render your Wan workflow locally. Install the exact models named in `video-api.json` in ComfyUI's expected model directories.
+4. Run `run-loox-worker.bat` and keep the worker running. The website detects both image and video modes separately.
+5. In Vercel and Supabase, make sure the existing `LOOX_WORKER_SECRET`, authentication/credit variables, and `supabase/local-comfy-worker.sql` migration are configured. The video operation costs **8 credits** by default unless your database pricing was changed.
+
+The worker connects over outbound HTTPS to Vercel, so no Cloudflare Tunnel, router port-forwarding or public ComfyUI API is necessary.
+
+**Limitations:** The PC must stay online; MP4 files larger than 40 MB are rejected; there is no audio in this Wan T2V workflow. The site refuses new video jobs when the worker is offline, so credits are not reserved for those attempts.
 
 All jobs require logged-in LOOX users, rate limits, credits, private result storage, and a running worker. Outputs are capped at 16MB for PNG and 40MB for MP4. Never publish `worker.env`, `LOOX_WORKER_SECRET`, or your Supabase service role key.
