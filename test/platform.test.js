@@ -32,6 +32,9 @@ test('ledger, budgets, billing replay, RLS and deletion against PostgreSQL WASM'
   const bill=(status,ref='subscription-invoices/9')=>q("select loox_billing($1,'pro',$2,$3,999,'USD',null,now(),null)",[u,ref,status]);
   await bill('paid');await bill('paid');await bill('failed');assert.equal(await wallet(),106);await bill('refunded');await bill('paid');assert.equal(await wallet(),6);
   await bill('refunded','early');await bill('paid','early');assert.equal(await wallet(),6);
+  await db.exec(await readFile(new URL('../supabase/cloud-image-models.sql',import.meta.url),'utf8'));
+  const cloud=await reserve(randomUUID(),'cloud','generate_bfl');assert.equal(await wallet(),0);
+  await finish(cloud.id);assert.equal(await wallet(),6);
   await q("select loox_rate('account-test',1,30)");await assert.rejects(q("select loox_rate('account-test',1,30)"),/rate_limited/);
   await db.exec("set role authenticated");await q("select set_config('request.jwt.claim.sub',$1,false)",[v]);
   assert.equal((await q('select * from loox_jobs')).rows.length,0);assert.deepEqual((await q('select user_id from loox_wallets')).rows,[{user_id:v}]);
