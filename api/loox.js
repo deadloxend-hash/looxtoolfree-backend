@@ -57,7 +57,7 @@ export default handler(async(req,res)=>{
   const day=new Date().toISOString().slice(0,10);
   const start=day+'T00:00:00.000Z';
   const jobs=await rows('jobs',{user_id:'eq.'+u.id,created_at:'gte.'+start,
-   operation:'in.('+['generate','generate_video','generate_replicate','generate_google','generate_bfl','generate_ideogram','generate_stability','generate_byteplus','generate_openai'].join(',')+')',state:'neq.failed',select:'operation',limit:'1000'});
+   operation:'in.('+['generate','generate_video',...cloudOperations].join(',')+')',state:'neq.failed',select:'operation',limit:'1000'});
   const used={generate:0,generate_video:0};
   for(const job of jobs){if(job.operation==='generate_video')used.generate_video++;else if(job.operation.startsWith('generate'))used.generate++;}
   const limit=30;
@@ -69,7 +69,7 @@ export default handler(async(req,res)=>{
   const offset=Number(req.query.offset||0);
   need(Number.isInteger(offset)&&offset>=0&&offset<=240,400,'Invalid history page.');
   const operation=req.query.operation==='generate_video'?'generate_video':'generate';
-  const jobs=await rows('jobs',{user_id:'eq.'+u.id,operation:operation==='generate'?'in.('+['generate','generate_replicate','generate_google','generate_bfl','generate_ideogram','generate_stability','generate_byteplus','generate_openai'].join(',')+')':'eq.generate_video',state:'eq.succeeded',result_path:'not.is.null',
+  const jobs=await rows('jobs',{user_id:'eq.'+u.id,operation:operation==='generate'?'in.('+['generate',...cloudOperations].join(',')+')':'eq.generate_video',state:'eq.succeeded',result_path:'not.is.null',
    select:'id,prompt,operation,created_at,result_path',order:'created_at.desc',limit:'12',offset:String(offset)});
   const items=await Promise.all(jobs.map(async j=>{
    let url=null;
@@ -90,7 +90,7 @@ export default handler(async(req,res)=>{
  if(action==='delete_image'){
   await limit(u,'delete_image',20,600);
   need(typeof b.id==='string'&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(b.id),400,'Invalid image ID.');
-  const [job]=await rows('jobs',{id:'eq.'+b.id,user_id:'eq.'+u.id,operation:'in.('+['generate','generate_replicate','generate_google','generate_bfl','generate_ideogram','generate_stability','generate_byteplus','generate_openai'].join(',')+')',
+  const [job]=await rows('jobs',{id:'eq.'+b.id,user_id:'eq.'+u.id,operation:'in.('+['generate',...cloudOperations].join(',')+')',
    state:'eq.succeeded',select:'id,result_path'});
   need(job,404,'Image not found.');
   if(job.result_path){
