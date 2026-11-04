@@ -22,6 +22,11 @@ test('ledger, budgets, billing replay, RLS and deletion against PostgreSQL WASM'
   await q('insert into auth.users values ($1),($2)',[u,v]);
   const onboard=(id,fp)=>q("select loox_account($1,'Creator',$2,'2026-11')",[id,fp]);
   await onboard(u,'first');await onboard(u,'first');await onboard(v,'second');assert.equal(await wallet(),10);
+  await db.exec(await readFile(new URL('../supabase/cloud-image-models.sql',import.meta.url),'utf8'));
+  await db.exec(await readFile(new URL('../supabase/cloud-image-quota.sql',import.meta.url),'utf8'));
+  const imageOne=(await q("select loox_reserve($1,$2,'image-quota-one','generate_google',1,9999999) as job",[u,randomUUID()])).rows[0].job;
+  await assert.rejects(q("select loox_reserve($1,$2,'image-quota-two','generate_stability',1,9999999)",[u,randomUUID()]),/daily_generation_limit/);
+  await q('select loox_finish($1,null)',[imageOne.id]);assert.equal(await wallet(),10);
   const reserve=(id,d='digest',op='upscale4',budget=9999999)=>one("select loox_reserve($1,$2,$3,$4,20,$5) as job",[u,id,d,op,budget]).then(v=>v.job);
   const id=randomUUID(),[a,b]=await Promise.all([reserve(id),reserve(id)]);assert.equal(a.id,b.id);assert.notEqual(a.fresh,b.fresh);assert.equal(await wallet(),6);
   await assert.rejects(reserve(id,'different'),/idempotency_conflict/);
@@ -32,7 +37,6 @@ test('ledger, budgets, billing replay, RLS and deletion against PostgreSQL WASM'
   const bill=(status,ref='subscription-invoices/9')=>q("select loox_billing($1,'pro',$2,$3,999,'USD',null,now(),null)",[u,ref,status]);
   await bill('paid');await bill('paid');await bill('failed');assert.equal(await wallet(),106);await bill('refunded');await bill('paid');assert.equal(await wallet(),6);
   await bill('refunded','early');await bill('paid','early');assert.equal(await wallet(),6);
-  await db.exec(await readFile(new URL('../supabase/cloud-image-models.sql',import.meta.url),'utf8'));
   const cloud=await reserve(randomUUID(),'cloud','generate_bfl');assert.equal(await wallet(),0);
   await finish(cloud.id);assert.equal(await wallet(),6);
   await q("select loox_rate('account-test',1,30)");await assert.rejects(q("select loox_rate('account-test',1,30)"),/rate_limited/);
