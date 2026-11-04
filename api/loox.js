@@ -1,5 +1,6 @@
 import {env,authenticate,account,aiReady,authReady,billingReady,handler,method,limit,need,rows,rpc,supa,json} from '../lib/core.js';
 import {start,status} from '../lib/jobs.js';
+import {imageCatalog,cloudJob,cloudOperations} from '../lib/image-cloud.js';
 import {checkout,portal} from '../lib/billing.js';
 import {templateAction} from '../lib/templates.js';
 
@@ -38,7 +39,7 @@ export default handler(async(req,res)=>{
   method(req,'GET');
   let plans=[],operations=[];
   if(authReady())[plans,operations]=await Promise.all([rows('plans',{select:'id,price_cents,credits,cadence'}),rows('operations',{select:'id,cost'})]);
-  return res.json({auth:authReady(),ai:aiReady(),billing:billingReady(),testBilling:env.LEMON_MODE==='test',plans,operations,
+  return res.json({auth:authReady(),ai:aiReady(),billing:billingReady(),testBilling:env.LEMON_MODE==='test',plans,operations,models:imageCatalog().map(m=>({...m,available:m.available&&operations.some(o=>o.id===m.operation)})),
    ...(authReady()?{url:env.SUPABASE_URL,key:env.SUPABASE_PUBLISHABLE_KEY}:{})});
  }
  const u=await authenticate(req);
@@ -56,9 +57,9 @@ export default handler(async(req,res)=>{
   const day=new Date().toISOString().slice(0,10);
   const start=day+'T00:00:00.000Z';
   const jobs=await rows('jobs',{user_id:'eq.'+u.id,created_at:'gte.'+start,
-   operation:'in.(generate,generate_video)',state:'neq.failed',select:'operation',limit:'1000'});
+   operation:'in.('+['generate','generate_video','generate_replicate','generate_google','generate_bfl','generate_ideogram','generate_stability','generate_byteplus','generate_openai'].join(',')+')',state:'neq.failed',select:'operation',limit:'1000'});
   const used={generate:0,generate_video:0};
-  for(const job of jobs){if(Object.hasOwn(used,job.operation))used[job.operation]++;}
+  for(const job of jobs){if(job.operation==='generate_video')used.generate_video++;else if(job.operation.startsWith('generate'))used.generate++;}
   const limit=30;
   return res.json({limit,used,remaining:{generate:Math.max(0,limit-used.generate),
    generate_video:Math.max(0,limit-used.generate_video)},reset_at:new Date(Date.parse(start)+86400000).toISOString()});
@@ -68,8 +69,8 @@ export default handler(async(req,res)=>{
   const offset=Number(req.query.offset||0);
   need(Number.isInteger(offset)&&offset>=0&&offset<=240,400,'Invalid history page.');
   const operation=req.query.operation==='generate_video'?'generate_video':'generate';
-  const jobs=await rows('jobs',{user_id:'eq.'+u.id,operation:'eq.'+operation,state:'eq.succeeded',result_path:'not.is.null',
-   select:'id,prompt,created_at,result_path',order:'created_at.desc',limit:'12',offset:String(offset)});
+  const jobs=await rows('jobs',{user_id:'eq.'+u.id,operation:operation==='generate'?'in.('+['generate','generate_replicate','generate_google','generate_bfl','generate_ideogram','generate_stability','generate_byteplus','generate_openai'].join(',')+')':'eq.generate_video',state:'eq.succeeded',result_path:'not.is.null',
+   select:'id,prompt,operation,created_at,result_path',order:'created_at.desc',limit:'12',offset:String(offset)});
   const items=await Promise.all(jobs.map(async j=>{
    let url=null;
    if(j.result_path){
@@ -78,17 +79,18 @@ export default handler(async(req,res)=>{
      if(signed?.signedURL)url=env.SUPABASE_URL+'/storage/v1'+signed.signedURL;
     }catch{}
    }
-   return {id:j.id,prompt:j.prompt||null,created_at:j.created_at,url};
+   return {id:j.id,prompt:j.prompt||null,model:j.operation.replace(/^generate_?/, '')||'flux',created_at:j.created_at,url};
   }));
   return res.json({items,has_more:jobs.length===12});
  }
  if(action==='status'){method(req,'GET');return res.json(await status(u,req.query.id));}
  method(req,'POST');const b=json(req);
  if(action==='job'){await limit(u,'submit',8);return res.status(202).json(await start(u,b));}
+ if(action==='cloud_job'){await limit(u,'submit',8);return res.status(202).json(await cloudJob(u,b));}
  if(action==='delete_image'){
   await limit(u,'delete_image',20,600);
   need(typeof b.id==='string'&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(b.id),400,'Invalid image ID.');
-  const [job]=await rows('jobs',{id:'eq.'+b.id,user_id:'eq.'+u.id,operation:'eq.generate',
+  const [job]=await rows('jobs',{id:'eq.'+b.id,user_id:'eq.'+u.id,operation:'in.('+['generate','generate_replicate','generate_google','generate_bfl','generate_ideogram','generate_stability','generate_byteplus','generate_openai'].join(',')+')',
    state:'eq.succeeded',select:'id,result_path'});
   need(job,404,'Image not found.');
   if(job.result_path){
