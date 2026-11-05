@@ -21,12 +21,12 @@ const fetch=async(url,options={})=>{
  throw Error('Unexpected URL '+url);
 };
 const response=value=>({ok:true,json:async()=>value,arrayBuffer:async()=>png});
-const context={Buffer,URL,FormData,AbortSignal,fetch,env,need,Problem,setTimeout,sharp:null,rows:null,rpc:null,supa:null,mac:null,uuid:null,authReady:null};
-vm.runInNewContext(source+'\nglobalThis.testRoutes={catalog,imageBytes,imageCatalog};',context);
-const {catalog,imageBytes,imageCatalog}=context.testRoutes;
+const context={Buffer,URL,FormData,AbortSignal,fetch,env,need,Problem,setTimeout,sharp:null,rows:async()=>catalog.map(m=>({id:m.operation,cost:m.cost})),rpc:()=>{throw Error('Reserve must not be reached')},supa:null,mac:null,uuid:null,authReady:()=>true};
+vm.runInNewContext(source+'\nglobalThis.testRoutes={catalog,imageBytes,imageCatalog,cloudJob};',context);
+const {catalog,imageBytes,imageCatalog,cloudJob}=context.testRoutes;
 assert.equal(catalog.length,16);
 assert.equal(imageCatalog([]).filter(x=>x.available).length,0);
-assert.equal(imageCatalog(catalog.map(m=>({id:m.operation,cost:m.cost}))).filter(x=>x.available).length,0,'A key and price row must not activate an unverified model');
+assert.equal(imageCatalog(catalog.map(m=>({id:m.operation,cost:m.cost}))).filter(x=>x.available).length,0);
 for(const m of catalog){
  calls.length=0;
  const bytes=await imageBytes(m,'Mock prompt','1:1',{});
@@ -39,3 +39,6 @@ for(const m of catalog){
  assert.ok(!payload.includes('sk-proj-'),m.id+' leaked a credential');
  console.log('PASS '+m.id);
 }
+
+for(const m of catalog){const before=calls.length;await assert.rejects(cloudJob({id:'test'},{model:m.id}),e=>e.status===503);assert.equal(calls.length,before,m.id+' contacted a paid provider while unverified')}
+console.log('PASS all unverified models fail closed before reservation or provider call');
