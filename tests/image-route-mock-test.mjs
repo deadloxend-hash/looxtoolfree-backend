@@ -26,6 +26,7 @@ vm.runInNewContext(source+'\nglobalThis.testRoutes={catalog,imageBytes,imageCata
 const {catalog,imageBytes,imageCatalog}=context.testRoutes;
 assert.equal(catalog.length,16);
 assert.equal(imageCatalog([]).filter(x=>x.available).length,0);
+assert.equal(imageCatalog(catalog.map(m=>({id:m.operation,cost:m.cost}))).filter(x=>x.available).length,0,'A key and price row must not activate an unverified model');
 for(const m of catalog){
  calls.length=0;
  const bytes=await imageBytes(m,'Mock prompt','1:1',{});
