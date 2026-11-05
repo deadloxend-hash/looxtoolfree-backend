@@ -39,7 +39,7 @@ export default handler(async(req,res)=>{
   method(req,'GET');
   let plans=[],operations=[];
   if(authReady())[plans,operations]=await Promise.all([rows('plans',{select:'id,price_cents,credits,cadence'}),rows('operations',{select:'id,cost'})]);
-  return res.json({auth:authReady(),ai:aiReady(),billing:billingReady(),testBilling:env.LEMON_MODE==='test',plans,operations,models:imageCatalog().map(m=>({...m,available:m.available&&operations.some(o=>o.id===m.operation)})),
+  return res.json({auth:authReady(),ai:aiReady(),billing:billingReady(),testBilling:env.LEMON_MODE==='test',plans,operations,models:imageCatalog(operations),
    ...(authReady()?{url:env.SUPABASE_URL,key:env.SUPABASE_PUBLISHABLE_KEY}:{})});
  }
  const u=await authenticate(req);
