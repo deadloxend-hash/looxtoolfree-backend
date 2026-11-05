@@ -1,17 +1,27 @@
-# LOOX premium image models
+# LOOX image model activation
 
-The image workspace reads the model catalog and costs from `GET /api/loox?action=config`. The server enables a choice only when its environment key exists and the matching `loox_operations` row is installed. Apply `supabase/cloud-image-models.sql` in the dedicated LOOX Tools database.
+All 17 choices appear in the workspace, including local FLUX.1 Schnell (3 credits). The 16 cloud choices are initially Coming Soon. No key shared in chat may be reused. Create rotated image-only credentials in sensitive Vercel production environment variables named `LOOX_IMAGE_GOOGLE_API_KEY`, `LOOX_IMAGE_BFL_API_KEY`, `LOOX_IMAGE_IDEOGRAM_API_KEY`, `LOOX_IMAGE_STABILITY_API_KEY`, `LOOX_IMAGE_BYTEPLUS_API_KEY`, `LOOX_IMAGE_OPENAI_API_KEY`, and `LOOX_IMAGE_REPLICATE_API_TOKEN`.
 
-| Choice | Server environment | Credits per successful image |
-| --- | --- | ---: |
-| Replicate FLUX 1.1 Pro | `REPLICATE_API_TOKEN` | 6 |
-| Google Gemini Flash Image | `GEMINI_API_KEY` | 5 |
-| Black Forest Labs FLUX 1.1 Pro | `BFL_API_KEY` | 6 |
-| Ideogram 3.0 | `IDEOGRAM_API_KEY` | 6 |
-| Stability Stable Image Core | `STABILITY_API_KEY` | 5 |
-| BytePlus Seedream | `BYTEPLUS_API_KEY`, `BYTEPLUS_MODEL_ID` | 6 |
-| OpenAI GPT Image | `OPENAI_API_KEY` | 6 |
+Apply `supabase/image-model-catalog-2026.sql`. A matching operation row and a new key alone never activate a model. Fund provider billing, review unit economics, obtain approval for a paid smoke generation, and verify a successful result, storage, reserve/finalize and refund path. Only then add the exact model ID to `LOOX_IMAGE_VERIFIED_MODELS`. Leave unset otherwise. If the provider stops working, remove the model ID immediately and mark its status Temporarily Unavailable during investigation.
 
-Configure keys as sensitive production environment variables in Vercel. Never put them in the GitHub Pages repository. A paid Pro or Lifetime plan is required for cloud choices. The free local FLUX.1 Schnell path remains 3 credits. The API reserves the fixed price before a provider call and refunds it if the request fails; successful results are normalized and stored in the account's private Supabase bucket. The daily image quota covers local and cloud generation together.
+| Provider | Model | Verification ID | Draft credits per successful image |
+| --- | --- | --- | ---: |
+| Google AI | Nano Banana 2 | `google_nano_2` | 8 |
+| Google AI | Nano Banana Pro | `google_nano_pro` | 18 |
+| Black Forest Labs | FLUX.2 Pro | `bfl_flux2_pro` | 9 |
+| Black Forest Labs | FLUX.2 Klein 4B | `bfl_klein_4b` | 5 |
+| Ideogram | P-Image | `ideogram_p_image` | 7 |
+| Ideogram | 4.5 | `ideogram_45` | 13 |
+| Stability AI | Stable Diffusion 3.5 Large | `stability_sd35` | 10 |
+| Stability AI | Stable Image Ultra | `stability_ultra` | 12 |
+| BytePlus | Seedream 4.5 | `byteplus_45` | 8 |
+| BytePlus | Seedream 5.0 Flash | `byteplus_50_flash` | 9 |
+| OpenAI | GPT Image 2.5 Flare | `openai_gpt_image` | 16 |
+| Replicate | Qwen Image 2 | `replicate_qwen2` | 7 |
+| Replicate | HiDream-I1 Fast | `replicate_hidream` | 5 |
+| Replicate | Imagen 4 Fast | `replicate_imagen4` | 6 |
+| Replicate | Luma Photon | `replicate_photon` | 7 |
+| Replicate | FLUX 1.1 Pro Ultra | `replicate_flux_ultra` | 9 |
+| LOOX Studio | FLUX.1 Schnell | `flux` | 3 |
 
-The provider balance and account-specific model activation cannot be inferred from the existence of a key. Run a paid end-to-end smoke test with an entitled account before treating a given provider as verified. Checkout is separately gated by merchant configuration. If a provider returns an authorization or funds error, the request shows a clear failure and releases the LOOX credits.
+Cloud prices are provisional and cannot be called final until provider invoices and paid-plan economics are verified. One image per request; model-specific advanced controls and reference images are still pending. The server authenticates, checks entitlement and quota, reserves credit once for an idempotent request, processes the image, and finalizes or releases the reservation. A shared 30/day UTC image allowance covers cloud and local generation. Provider error bodies and private credentials are never returned to the browser.
