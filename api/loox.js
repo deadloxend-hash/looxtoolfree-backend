@@ -37,9 +37,9 @@ export default handler(async(req,res)=>{
  if(typeof action==='string'&&action.startsWith('template_'))return templateAction(req,res,action.slice(9));
  if(action==='config'){
   method(req,'GET');
-  let plans=[],operations=[];
-  if(authReady())[plans,operations]=await Promise.all([rows('plans',{select:'id,price_cents,credits,cadence'}),rows('operations',{select:'id,cost'})]);
-  return res.json({auth:authReady(),ai:aiReady(),billing:billingReady(),testBilling:env.LEMON_MODE==='test',plans,operations,models:imageCatalog(operations),
+  let plans=[],operations=[],localWorker=null;
+  if(authReady())[plans,operations,localWorker]=await Promise.all([rows('plans',{select:'id,price_cents,credits,cadence'}),rows('operations',{select:'id,cost'}),rows('local_worker_health',{id:'eq.1',select:'modes,last_seen'}).then(x=>x[0]).catch(()=>null)]);
+  return res.json({auth:authReady(),ai:aiReady(),billing:billingReady(),testBilling:env.LEMON_MODE==='test',plans,operations,local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations),
    ...(authReady()?{url:env.SUPABASE_URL,key:env.SUPABASE_PUBLISHABLE_KEY}:{})});
  }
  const u=await authenticate(req);
