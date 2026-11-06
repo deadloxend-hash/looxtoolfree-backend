@@ -1,0 +1,56 @@
+-- Transactional integration tests. Synthetic users/jobs are rolled back; no credits or files are generated.
+begin;
+create temporary table community_test(uid uuid,other_id uuid,job uuid,post uuid);
+insert into community_test values(gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),null);
+grant all on community_test to authenticated; grant select on community_test to anon;
+insert into auth.users(id,raw_app_meta_data) select uid,'{"loox_template_admin":true}'::jsonb from community_test union all select other_id,'{}'::jsonb from community_test;
+insert into public.loox_profiles(user_id,name,terms_version) select uid,'Transactional test','2026-11' from community_test union all select other_id,'Transactional test','2026-11' from community_test;
+insert into public.loox_jobs(id,user_id,request_id,digest,operation,cost,state,result_path,prompt) select job,uid,gen_random_uuid(),'transactional-community-test','generate',3,'succeeded',uid::text||'/transactional-test.png','Private integration-test prompt' from community_test;
+select set_config('request.jwt.claim.sub',(select uid::text from community_test),true);
+set local role authenticated;
+select public.loox_save_creator('test_'||left(replace(auth.uid()::text,'-',''),20),'Test creator','Test bio',null);
+update community_test set post=public.loox_publish_creation(job,'Test caption',false);
+do $$ begin
+ if not exists(select 1 from public.loox_community_posts where id=(select post from community_test) and status='pending' and shared_prompt is null) then raise exception 'Publishing must be pending and hide unshared prompts'; end if;
+ if public.loox_community_feed()::text like '%Private integration-test prompt%' then raise exception 'Private prompt leaked'; end if;
+end $$;
+select public.loox_review_creation(post,'approved') from community_test;
+reset role;
+select set_config('request.jwt.claim.sub','',true);
+set local role anon;
+do $$ begin
+ if not exists(select 1 from public.loox_community_posts where id=(select post from community_test) and shared_prompt is null) then raise exception 'Approved post not public'; end if;
+ if public.loox_community_feed()::text like '%Private integration-test prompt%' then raise exception 'Unshared prompt leaked to public feed'; end if;
+ begin insert into public.loox_post_likes(post_id,user_id) select post,other_id from community_test;raise exception 'Anonymous like allowed';exception when insufficient_privilege then null;end;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub',(select other_id::text from community_test),true);
+set local role authenticated;
+select public.loox_save_creator('test_'||left(replace(auth.uid()::text,'-',''),20),'Test viewer','',null);
+do $$ begin
+ begin perform public.loox_manage_post((select post from community_test),'hide');raise exception 'Foreign post mutation allowed';exception when raise_exception then if sqlerrm<>'Post not found' then raise;end if;end;
+ begin perform public.loox_review_creation((select post from community_test),'approved');raise exception 'Non-admin review allowed';exception when raise_exception then if sqlerrm<>'Administrator access required' then raise;end if;end;
+ insert into public.loox_post_likes(post_id,user_id) select post,auth.uid() from community_test;
+ begin insert into public.loox_post_likes(post_id,user_id) select post,auth.uid() from community_test;raise exception 'Duplicate like allowed';exception when unique_violation then null;end;
+ insert into public.loox_creator_follows(follower_id,creator_id) select auth.uid(),uid from community_test;
+ begin insert into public.loox_creator_follows(follower_id,creator_id) values(auth.uid(),auth.uid());raise exception 'Self-follow allowed';exception when check_violation or insufficient_privilege then null;end;
+ begin insert into public.loox_creator_follows(follower_id,creator_id) select auth.uid(),uid from community_test;raise exception 'Duplicate follow allowed';exception when unique_violation then null;end;
+ if (public.loox_creator_summary((select uid from community_test))->>'followers')::integer<>1 then raise exception 'Follower count is wrong';end if;
+ delete from public.loox_post_likes where post_id=(select post from community_test) and user_id=auth.uid();
+ delete from public.loox_creator_follows where follower_id=auth.uid();
+ if (public.loox_creator_summary((select uid from community_test))->>'followers')::integer<>0 then raise exception 'Unfollow failed';end if;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub',(select uid::text from community_test),true);
+set local role authenticated;
+select public.loox_manage_post(post,'hide') from community_test;
+reset role;
+select set_config('request.jwt.claim.sub','',true);
+set local role anon;
+do $$ begin if exists(select 1 from public.loox_community_posts where id=(select post from community_test)) then raise exception 'Hidden post visible publicly';end if;end $$;
+reset role;
+select set_config('request.jwt.claim.sub',(select uid::text from community_test),true);
+set local role authenticated;
+select public.loox_manage_post(post,'delete') from community_test;
+do $$ begin if not exists(select 1 from public.loox_jobs where id=(select job from community_test)) then raise exception 'Deleting public post deleted private original';end if;end $$;
+rollback;
