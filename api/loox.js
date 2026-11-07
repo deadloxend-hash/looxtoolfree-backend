@@ -2,7 +2,7 @@ import {communityAction} from '../lib/community-admin.js';
 import {env,authenticate,account,aiReady,authReady,billingReady,handler,method,limit,need,rows,rpc,supa,json} from '../lib/core.js';
 import {start,status} from '../lib/jobs.js';
 import {imageCatalog,cloudJob,cloudOperations} from '../lib/image-cloud.js';
-import {videoCatalog,cloudVideoJob,cloudVideoStatus,cloudVideoOperations} from '../lib/video-cloud.js';
+import {videoCatalog,videoQuote,cloudVideoJob,cloudVideoStatus,cloudVideoOperations} from '../lib/video-cloud.js';
 import {checkout,portal} from '../lib/billing.js';
 import {templateAction} from '../lib/templates.js';
 
@@ -88,6 +88,7 @@ export default handler(async(req,res)=>{
  }
  if(action==='status'){method(req,'GET');const [j]=await rows('jobs',{id:'eq.'+req.query.id,user_id:'eq.'+u.id,select:'operation'});return res.json(j&&cloudVideoOperations.includes(j.operation)?await cloudVideoStatus(u,req.query.id):await status(u,req.query.id));}
  method(req,'POST');const b=json(req);
+ if(action==='video_quote'){await limit(u,'video_quote',60);return res.json(videoQuote(u,b,await rows('operations',{select:'id,cost'})));}
  if(action==='job'){await limit(u,'submit',8);return res.status(202).json(await start(u,b));}
  if(action==='cloud_job'){await limit(u,'submit',8);return res.status(202).json(await cloudJob(u,b));}
  if(action==='cloud_video_job'){await limit(u,'submit',8);return res.status(202).json(await cloudVideoJob(u,b));}
