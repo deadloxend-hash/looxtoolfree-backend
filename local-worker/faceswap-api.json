@@ -1,0 +1,51 @@
+{
+  "2": {
+    "inputs": {
+      "enabled": true,
+      "swap_model": "inswapper_128.onnx",
+      "facedetection": "retinaface_resnet50",
+      "face_restore_model": "none",
+      "face_restore_visibility": 1,
+      "codeformer_weight": 0.5,
+      "detect_gender_input": "no",
+      "detect_gender_source": "no",
+      "input_faces_index": "0",
+      "source_faces_index": "0",
+      "console_log_level": 1,
+      "input_image": [
+        "4",
+        0
+      ],
+      "source_image": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "ReActorFaceSwap",
+    "_meta": {
+      "title": "ReActor Fast Face Swap"
+    }
+  },
+  "3": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "SaveImage"
+  },
+  "4": {
+    "inputs": {
+      "image": "LOOX_TARGET.png"
+    },
+    "class_type": "LoadImage"
+  },
+  "5": {
+    "inputs": {
+      "image": "LOOX_SOURCE.png"
+    },
+    "class_type": "LoadImage"
+  }
+}
