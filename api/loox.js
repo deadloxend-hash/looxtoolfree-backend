@@ -5,6 +5,7 @@ import {imageCatalog,cloudJob,cloudOperations} from '../lib/image-cloud.js';
 import {videoCatalog,videoQuote,cloudVideoJob,cloudVideoStatus,cloudVideoOperations} from '../lib/video-cloud.js';
 import {checkout,portal} from '../lib/billing.js';
 import {templateAction} from '../lib/templates.js';
+import {r2Ready} from '../lib/r2.js';
 
 async function overview(u){
  const own={user_id:'eq.'+u.id}, recent={...own,order:'created_at.desc',limit:'40'};
@@ -42,7 +43,7 @@ export default handler(async(req,res)=>{
   method(req,'GET');
   let plans=[],operations=[],localWorker=null;
   if(authReady())[plans,operations,localWorker]=await Promise.all([rows('plans',{select:'id,price_cents,credits,cadence'}),rows('operations',{select:'id,cost'}),rows('local_worker_health',{id:'eq.1',select:'modes,last_seen'}).then(x=>x[0]).catch(()=>null)]);
-  return res.json({auth:authReady(),ai:aiReady(),billing:billingReady(),testBilling:env.LEMON_MODE==='test',plans,operations,local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations),videoModels:videoCatalog(operations),faceSwap:{available:Boolean(env.LOOX_FACE_SWAP_LICENSED==='true'&&aiReady()&&localWorker?.modes?.includes('face_swap')&&Date.now()-Date.parse(localWorker.last_seen)<90000),cost:operations.find(o=>o.id==='face_swap')?.cost??6},
+  return res.json({auth:authReady(),ai:aiReady(),billing:billingReady(),r2Media:{configured:r2Ready(),imagesOnly:true},testBilling:env.LEMON_MODE==='test',plans,operations,local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations),videoModels:videoCatalog(operations),faceSwap:{available:Boolean(env.LOOX_FACE_SWAP_LICENSED==='true'&&aiReady()&&localWorker?.modes?.includes('face_swap')&&Date.now()-Date.parse(localWorker.last_seen)<90000),cost:operations.find(o=>o.id==='face_swap')?.cost??6},
    ...(authReady()?{url:env.SUPABASE_URL,key:env.SUPABASE_PUBLISHABLE_KEY}:{})});
  }
  const u=await authenticate(req);
