@@ -5,7 +5,7 @@ Status: **backend adapter staged but NOT live** until secure S3 credentials are 
 
 ## Existing safeguards
 - Existing Supabase authentication, jobs, storage references, public community feed and media URLs remain unchanged.
-- `api/r2-media.js` is a separate signed-in-only image gateway; it does not receive video uploads or automatically create community posts.
+- `lib/r2-media.js` is a separate signed-in-only image gateway; it does not receive video uploads or automatically create community posts.
 - Only JPEG/PNG/WebP image uploads, maximum 2 MiB, decoded, resized and re-encoded as WebP. Maximum 5 attempts per hour per authenticated user.
 - Read access requires the authenticated owner's own object prefix.
 - No R2 keys are shipped in GitHub Pages or committed to GitHub.
@@ -26,8 +26,8 @@ Redeploy Vercel after setting variables.
 
 ## Smoke test (no paid AI inference)
 1. Verify `GET /api/loox?action=config` returns `r2Media.configured:true` without exposing keys.
-2. Sign in with a verified LOOX account; upload a small test image via `POST /api/r2-media` with JSON `{ "image": "data:image/png;base64,..." }` and the normal bearer session token.
-3. Verify the returned path is under `<user-id>/community/` and that a signed-in `GET /api/r2-media?path=<path>` returns a valid image.
+2. Sign in with a verified LOOX account; upload a small test image via `POST /api/loox?action=r2_media` with JSON `{ "image": "data:image/png;base64,..." }` and the normal bearer session token.
+3. Verify the returned path is under `<user-id>/community/` and that a signed-in `GET /api/loox?action=r2_media&path=<path>` returns a valid image.
 4. Verify anonymous GET, another account's GET, oversized uploads and unsupported formats are rejected.
 5. Verify only the intended private R2 bucket receives the test object.
 6. Clean up the synthetic test file using privileged admin tooling after confirming the owner.
