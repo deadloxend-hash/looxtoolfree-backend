@@ -9,9 +9,10 @@ insert into public.loox_jobs(id,user_id,request_id,digest,operation,cost,state,r
 select set_config('request.jwt.claim.sub',(select uid::text from community_test),true);
 set local role authenticated;
 select public.loox_save_creator('test_'||left(replace(auth.uid()::text,'-',''),20),'Test creator','Test bio',null);
-update community_test set post=public.loox_publish_creation(job,'Test caption',false);
+update community_test set post=public.loox_publish_creation(job,'',false);
 do $$ begin
  if not exists(select 1 from public.loox_community_posts where id=(select post from community_test) and status='pending' and shared_prompt is null) then raise exception 'Publishing must be pending and hide unshared prompts'; end if;
+ if exists(select 1 from public.loox_community_posts where id=(select post from community_test) and caption<>'Untitled creation') then raise exception 'Unshared prompt copied into public caption';end if;
  if public.loox_community_feed()::text like '%Private integration-test prompt%' then raise exception 'Private prompt leaked'; end if;
 end $$;
 select public.loox_review_creation(post,'approved') from community_test;

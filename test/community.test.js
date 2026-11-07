@@ -23,6 +23,7 @@ test('community publishing, moderation, likes, follows, privacy and account isol
  await db.exec(await readFile(new URL('../supabase/community-platform.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../supabase/community-rpc-hardening.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../supabase/video-community-views.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/community-private-caption.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../tests/community-rls.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../tests/community-platform.sql',import.meta.url),'utf8'));
  assert.equal((await db.query('select count(*)::int n from auth.users')).rows[0].n,0,'fixture writes rolled back');
