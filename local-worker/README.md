@@ -26,3 +26,15 @@ The worker connects over outbound HTTPS to Vercel, so no Cloudflare Tunnel, rout
 **Limitations:** The PC must stay online; MP4 files larger than 40 MB are rejected; there is no audio in this Wan T2V workflow. The site refuses new video jobs when the worker is offline, so credits are not reserved for those attempts.
 
 All jobs require logged-in LOOX users, rate limits, credits, private result storage, and a running worker. Outputs are capped at 16MB for PNG and 40MB for MP4. Never publish `worker.env`, `LOOX_WORKER_SECRET`, or your Supabase service role key.
+
+## ReActor face swap (consent-only, licensed use)
+
+The Face Swap page at `/faceswap.html` now sends two PNG inputs through the authenticated Vercel backend to the existing private ComfyUI worker. The workflow is based on the user's API-format ReActor export. The submitted export had no `source_image` connection; `faceswap-api.json` fixes that with a second `LoadImage` node.
+
+1. Obtain the appropriate **commercial InSwapper license** from InsightFace before enabling this functionality for a public/commercial website. The `inswapper_128.onnx` model weights are **not** covered by the MIT code license. Details: https://www.insightface.ai/
+2. On the Windows PC, install and verify **ComfyUI-ReActor** and the licensed `inswapper_128.onnx` model. The exported workflow uses `ReActorFaceSwap` and `retinaface_resnet50`; confirm they run inside ComfyUI first.
+3. Update your existing local `loox-worker.py` and add `faceswap-api.json` from this repository beside `flux-api.json`, `video-api.json`, and your existing private `worker.env`. **Never upload or commit `worker.env`.**
+4. After confirming licensing and testing ReActor locally, set **`LOOX_FACE_SWAP_LICENSED=true`** in Vercel **Production** environment, redeploy the backend and restart `run-loox-worker.bat`. Do not set this flag before licensing is confirmed.
+5. Keep ComfyUI and the worker running. Open `faceswap.html`, sign in, upload the target photo and consenting source face, check both permission boxes, then process. The default credit cost is **6 credits**, billed on success (failed jobs release reserved credits).
+
+Privacy: image uploads are normalized and stripped of EXIF on the backend, kept in private Supabase Storage, and sent to the local worker only as expiring signed URLs. The worker uploads both images to local ComfyUI and stores the PNG result in the user's private library. The maintenance job removes source input images from private storage after the job is settled. No direct public ComfyUI port or third-party face-swap API is needed. Your PC must remain online for jobs to finish.
