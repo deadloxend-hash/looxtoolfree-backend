@@ -6,6 +6,7 @@ import {videoCatalog,videoQuote,cloudVideoJob,cloudVideoStatus,cloudVideoOperati
 import {checkout,portal} from '../lib/billing.js';
 import {templateAction} from '../lib/templates.js';
 import {r2Ready} from '../lib/r2.js';
+import {r2MediaAction} from '../lib/r2-media.js';
 
 async function overview(u){
  const own={user_id:'eq.'+u.id}, recent={...own,order:'created_at.desc',limit:'40'};
@@ -38,6 +39,7 @@ async function removeAccount(u,password){
 export default handler(async(req,res)=>{
  const action=req.query.action;
  if(typeof action==='string'&&action.startsWith('community_'))return communityAction(req,res,action.slice(10));
+ if(action==='r2_media')return r2MediaAction(req,res);
  if(typeof action==='string'&&action.startsWith('template_'))return templateAction(req,res,action.slice(9));
  if(action==='config'){
   method(req,'GET');
