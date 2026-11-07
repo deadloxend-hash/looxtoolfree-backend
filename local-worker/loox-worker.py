@@ -65,14 +65,14 @@ def upload_face_image(url, job_id, role):
     if parsed.scheme != "https" or not parsed.path.startswith("/storage/v1/object/sign/loox-results/"):
         raise ValueError("Unexpected input image URL.")
     data = request(url, timeout=35)
-    if not data.startswith(b"\\x89PNG\\r\\n\\x1a\\n") or len(data) > 8_000_000:
+    if not data.startswith(b"\x89PNG\r\n\x1a\n") or len(data) > 8_000_000:
         raise ValueError("The private face-swap image must be a PNG under 8 MB.")
     name = "loox_" + job_id.replace("-", "") + "_" + role + ".png"
     boundary = "LOOXBoundary" + job_id.replace("-", "")
     body = (
-        ("--" + boundary + "\\r\\nContent-Disposition: form-data; name=\\\"image\\\"; filename=\\\"" + name +
-         "\\\"\\r\\nContent-Type: image/png\\r\\n\\r\\n").encode() + data +
-        ("\\r\\n--" + boundary + "\\r\\nContent-Disposition: form-data; name=\\\"overwrite\\\"\\r\\n\\r\\ntrue\\r\\n--" + boundary + "--\\r\\n").encode()
+        ("--" + boundary + "\r\nContent-Disposition: form-data; name=\"image\"; filename=\"" + name +
+         "\"\r\nContent-Type: image/png\r\n\r\n").encode() + data +
+        ("\r\n--" + boundary + "\r\nContent-Disposition: form-data; name=\"overwrite\"\r\n\r\ntrue\r\n--" + boundary + "--\r\n").encode()
     )
     uploaded = request(COMFY + "/upload/image", "POST", body,
                        {"Content-Type": "multipart/form-data; boundary=" + boundary}, 60)
