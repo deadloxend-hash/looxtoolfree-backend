@@ -27,6 +27,7 @@ COMFY = os.getenv("COMFYUI_URL", "http://127.0.0.1:8188").rstrip("/")
 SECRET = os.getenv("LOOX_WORKER_SECRET", "")
 IMAGE_JSON = HERE / "flux-api.json"
 VIDEO_JSON = HERE / "video-api.json"
+FACE_JSON = HERE / "faceswap-api.json"
 if not SECRET or len(SECRET) < 32:
     sys.exit("Set LOOX_WORKER_SECRET in worker.env (the private setup file).")
 if not COMFY.startswith(("http://127.0.0.1:", "http://localhost:")):
@@ -58,12 +59,46 @@ def dimensions(ratio):
             "9:16": (576, 1024), "4:3": (1024, 768),
             "3:4": (768, 1024)}.get(ratio, (1024, 1024))
 
+def upload_face_image(url, job_id, role):
+    # Only fetch private, short-lived HTTPS storage URLs sent by the LOOX backend.
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https" or not parsed.path.startswith("/storage/v1/object/sign/loox-results/"):
+        raise ValueError("Unexpected input image URL.")
+    data = request(url, timeout=35)
+    if not data.startswith(b"\\x89PNG\\r\\n\\x1a\\n") or len(data) > 8_000_000:
+        raise ValueError("The private face-swap image must be a PNG under 8 MB.")
+    name = "loox_" + job_id.replace("-", "") + "_" + role + ".png"
+    boundary = "LOOXBoundary" + job_id.replace("-", "")
+    body = (
+        ("--" + boundary + "\\r\\nContent-Disposition: form-data; name=\\\"image\\\"; filename=\\\"" + name +
+         "\\\"\\r\\nContent-Type: image/png\\r\\n\\r\\n").encode() + data +
+        ("\\r\\n--" + boundary + "\\r\\nContent-Disposition: form-data; name=\\\"overwrite\\\"\\r\\n\\r\\ntrue\\r\\n--" + boundary + "--\\r\\n").encode()
+    )
+    uploaded = request(COMFY + "/upload/image", "POST", body,
+                       {"Content-Type": "multipart/form-data; boundary=" + boundary}, 60)
+    if not isinstance(uploaded, dict) or uploaded.get("name") != name:
+        raise ValueError("ComfyUI did not confirm the face-swap upload.")
+    return name
+
 def build_prompt(job):
     video = job["operation"] == "generate_video"
-    path = VIDEO_JSON if video else IMAGE_JSON
+    swap = job["operation"] == "face_swap"
+    path = FACE_JSON if swap else (VIDEO_JSON if video else IMAGE_JSON)
     graph = json.loads(path.read_text(encoding="utf-8-sig"))
     if not isinstance(graph, dict) or not all(isinstance(x, dict) and "class_type" in x for x in graph.values()):
         raise ValueError("Please export an API-format ComfyUI workflow, not the normal workflow.")
+    if swap:
+        if graph.get("2", {}).get("class_type") != "ReActorFaceSwap" or (
+            graph.get("4", {}).get("class_type") != "LoadImage" or
+            graph.get("5", {}).get("class_type") != "LoadImage" or
+            graph.get("3", {}).get("class_type") != "SaveImage"):
+            raise ValueError("A complete ReActor API workflow with two LoadImage inputs is required.")
+        graph["4"]["inputs"]["image"] = upload_face_image(job["input"]["target_image"], job["id"], "target")
+        graph["5"]["inputs"]["image"] = upload_face_image(job["input"]["swap_image"], job["id"], "source")
+        graph["2"]["inputs"]["input_image"] = ["4", 0]
+        graph["2"]["inputs"]["source_image"] = ["5", 0]
+        graph["3"]["inputs"]["filename_prefix"] = "LOOXFaceSwap_" + job["id"][:8]
+        return graph
     prompt = job["input"]["prompt"]
     seed = job["input"].get("seed")
     if seed is None:
@@ -111,7 +146,7 @@ def generate(job):
         time.sleep(4)
         if int(time.monotonic()) % 20 < 4:
             try:
-                backend("ping", {"modes": (["generate"] if IMAGE_JSON.exists() else []) + (["generate_video"] if VIDEO_JSON.exists() else [])})
+                backend("ping", {"modes": supported_modes()})
             except Exception:
                 pass
         entry = request(COMFY + "/history/" + urllib.parse.quote(pid, safe=""))
@@ -175,6 +210,11 @@ def run_job(job):
         except Exception as settle:
             print("Failed to settle job; backend will expire it:", str(settle)[:200])
 
+def supported_modes():
+    return (["generate"] if IMAGE_JSON.exists() else []) + (
+        ["generate_video"] if VIDEO_JSON.exists() else []) + (
+        ["face_swap"] if FACE_JSON.exists() else [])
+
 def main():
     print("LOOX Private GPU Worker | ComfyUI:", COMFY)
     delay = 3
@@ -188,10 +228,9 @@ def main():
     print("Connected. Keep this terminal running. Press Ctrl+C to stop.")
     while True:
         try:
-            supported = (["generate"] if IMAGE_JSON.exists() else []) + (
-                         ["generate_video"] if VIDEO_JSON.exists() else [])
+            supported = supported_modes()
             if not supported:
-                sys.exit("No usable API workflow found. Place flux-api.json or video-api.json beside this script.")
+                sys.exit("No usable API workflow found. Place flux-api.json, video-api.json or faceswap-api.json beside this script.")
             response = backend("claim", {"modes": supported})
             job = response.get("job")
             if job:
