@@ -20,7 +20,10 @@ test('community publishing, moderation, likes, follows, privacy and account isol
  create function storage.foldername(text) returns text[] language sql as $$select (string_to_array($1,'/'))[1:array_length(string_to_array($1,'/'),1)-1]$$;`);
  await db.exec(await readFile(new URL('../supabase/community-templates.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../supabase/creative-community.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/community-platform.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/community-rpc-hardening.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../tests/community-rls.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../tests/community-platform.sql',import.meta.url),'utf8'));
  assert.equal((await db.query('select count(*)::int n from auth.users')).rows[0].n,0,'fixture writes rolled back');
  }finally{await db.close();}
 });

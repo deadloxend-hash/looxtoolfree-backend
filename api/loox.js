@@ -1,3 +1,4 @@
+import {communityAction} from '../lib/community-admin.js';
 import {env,authenticate,account,aiReady,authReady,billingReady,handler,method,limit,need,rows,rpc,supa,json} from '../lib/core.js';
 import {start,status} from '../lib/jobs.js';
 import {imageCatalog,cloudJob,cloudOperations} from '../lib/image-cloud.js';
@@ -35,6 +36,7 @@ async function removeAccount(u,password){
 }
 export default handler(async(req,res)=>{
  const action=req.query.action;
+ if(typeof action==='string'&&action.startsWith('community_'))return communityAction(req,res,action.slice(10));
  if(typeof action==='string'&&action.startsWith('template_'))return templateAction(req,res,action.slice(9));
  if(action==='config'){
   method(req,'GET');

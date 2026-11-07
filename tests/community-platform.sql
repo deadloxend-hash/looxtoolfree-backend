@@ -1,0 +1,70 @@
+begin;
+create temporary table social_test(owner_id uuid,viewer_id uuid,stranger_id uuid,job uuid,post uuid,collection uuid);
+insert into social_test values(gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),null,null);
+grant all on social_test to authenticated;grant select on social_test to anon;
+insert into auth.users(id,raw_app_meta_data) select owner_id,'{"loox_template_admin":true}'::jsonb from social_test union all select viewer_id,'{}' from social_test union all select stranger_id,'{}' from social_test;
+insert into public.loox_profiles(user_id,name,terms_version) select owner_id,'Owner','2026-11' from social_test;
+insert into public.loox_jobs(id,user_id,request_id,digest,operation,cost,state,result_path,prompt) select job,owner_id,gen_random_uuid(),'social-test','video_wan25_i2v',3,'succeeded',owner_id||'/test.mp4','SECRET PROMPT' from social_test;
+select set_config('request.jwt.claim.sub',(select owner_id::text from social_test),true);
+set local role authenticated;
+update social_test set post=public.loox_publish_creation(job,'Original public test',false);
+select public.loox_review_creation(post,'approved') from social_test;
+do $$begin
+ if (select media_type from public.loox_community_posts where id=(select post from social_test))<>'video' then raise exception 'Cloud video classified as image';end if;
+ begin insert into public.loox_post_likes(user_id,post_id) select owner_id,post from social_test;raise exception 'Self like accepted';exception when insufficient_privilege then null;end;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub',(select viewer_id::text from social_test),true);
+set local role authenticated;
+insert into public.loox_saved_posts(user_id,post_id) select viewer_id,post from social_test;
+with c as(insert into public.loox_collections(user_id,name) values(auth.uid(),'Private ideas') returning id) update social_test set collection=(select id from c);
+insert into public.loox_collection_items(collection_id,post_id) select collection,post from social_test;
+insert into public.loox_post_comments(post_id,user_id,body) select post,viewer_id,'<img src=x onerror=alert(1)> literal text' from social_test;
+insert into public.loox_creator_follows(follower_id,creator_id) select viewer_id,owner_id from social_test;
+do $$begin
+ if jsonb_array_length(public.loox_discover('all','following')->'items')<>1 then raise exception 'Following feed missing post';end if;
+ if jsonb_array_length(public.loox_discover('all','saved')->'items')<>1 then raise exception 'Saved feed missing post';end if;
+ if jsonb_array_length(public.loox_discover('all','latest',0,null,'nonsense')->'items')<>0 then raise exception 'Search filter ignored';end if;
+ if public.loox_discover()::text like '%SECRET PROMPT%' then raise exception 'Hidden prompt leaked';end if;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub',(select stranger_id::text from social_test),true);
+set local role authenticated;
+do $$begin
+ if exists(select 1 from public.loox_collections where id=(select collection from social_test)) then raise exception 'Private collection visible';end if;
+ if exists(select 1 from public.loox_collection_items where collection_id=(select collection from social_test)) then raise exception 'Private items visible';end if;
+ if exists(select 1 from public.loox_saved_posts) then raise exception 'Foreign saves visible';end if;
+ if jsonb_array_length(public.loox_discover('all','latest',0,null,'',(select collection from social_test))->'items')<>0 then raise exception 'Collection ID guess leaked posts';end if;
+ if exists(select 1 from public.loox_notifications) then raise exception 'Foreign notifications visible';end if;
+ begin insert into public.loox_collection_items(collection_id,post_id) select collection,post from social_test;raise exception 'Foreign collection write accepted';exception when insufficient_privilege then null;end;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub',(select owner_id::text from social_test),true);
+set local role authenticated;
+do $$begin if (select count(*) from public.loox_notifications)<3 then raise exception 'Missing social notifications';end if;end $$;
+select public.loox_post_permissions(post,false,false,false) from social_test;
+select public.loox_save_privacy(true,true,false);
+reset role;
+select set_config('request.jwt.claim.sub',(select viewer_id::text from social_test),true);
+set local role authenticated;
+do $$begin
+ if jsonb_array_length(public.loox_discover('all','latest',0,(select owner_id from social_test))->'items')<>0 then raise exception 'Private profile post leaked in feed';end if;
+ if public.loox_creator_summary((select owner_id from social_test)) is not null then raise exception 'Private profile summary leaked';end if;
+ if exists(select 1 from public.loox_collection_items) then raise exception 'Saved reference exposed restricted post';end if;
+ if exists(select 1 from public.loox_post_comments) then raise exception 'Restricted comments visible';end if;
+ begin insert into public.loox_post_comments(post_id,user_id,body) select post,viewer_id,'No permission' from social_test;raise exception 'Private post comment allowed';exception when insufficient_privilege then null;end;
+end $$;
+reset role;
+select set_config('request.jwt.claim.sub',(select owner_id::text from social_test),true);
+set local role authenticated;
+select public.loox_save_privacy(false,false,true);
+reset role;
+-- Clearing a result path must remove a stale community reference from all feeds.
+update public.loox_jobs set result_path=null where id=(select job from social_test);
+select set_config('request.jwt.claim.sub','',true);
+set local role anon;
+do $$begin
+ if jsonb_array_length(public.loox_community_feed('all','latest',0,(select owner_id from social_test))->'items')<>0 then raise exception 'Deleted result still exposed';end if;
+end $$;
+reset role;
+rollback;
