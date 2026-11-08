@@ -6,7 +6,7 @@ function authorized(req){
   need(typeof env.LOOX_WORKER_SECRET==='string'&&env.LOOX_WORKER_SECRET.length>=32,503,'Local GPU worker is not configured.');
   need(header.startsWith('Bearer ')&&equal(header.slice(7),env.LOOX_WORKER_SECRET),401,'Unauthorized worker.');
 }
-function modes(input){return Array.isArray(input)?[...new Set(input.filter(x=>x==='generate'||x==='generate_reference'||x==='generate_video'||x==='face_swap'&&env.LOOX_FACE_SWAP_LICENSED==='true'))]:[]}
+function modes(input){return Array.isArray(input)?[...new Set(input.filter(x=>x==='generate'||x==='generate_z_image'||x==='generate_reference'||x==='generate_video'||x==='face_swap'&&env.LOOX_FACE_SWAP_LICENSED==='true'))]:[]}
 async function ownership(body) {
   need(uuid.test(body.id)&&uuid.test(body.lease),400,'Invalid job credentials.');
   const [q]=await rows('local_queue',{job_id:'eq.'+body.id,lease:'eq.'+body.lease,select:'job_id,user_id,operation,lease'});
