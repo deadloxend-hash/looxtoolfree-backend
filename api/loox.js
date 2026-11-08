@@ -66,7 +66,7 @@ export default handler(async(req,res)=>{
    operation:'in.('+['generate','generate_z_image','generate_video',...cloudOperations,...cloudVideoOperations].join(',')+')',state:'neq.failed',select:'operation',limit:'1000'});
   const used={generate:0,generate_video:0};
   for(const job of jobs){if(job.operation==='generate_video'||cloudVideoOperations.includes(job.operation))used.generate_video++;else if(job.operation.startsWith('generate'))used.generate++;}
-  const limit=30;
+  const limit=1000000000;
   return res.json({limit,used,remaining:{generate:Math.max(0,limit-used.generate),
    generate_video:Math.max(0,limit-used.generate_video)},reset_at:new Date(Date.parse(start)+86400000).toISOString()});
  }
