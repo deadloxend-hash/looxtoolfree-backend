@@ -33,3 +33,18 @@ test('R2 uploads use accepted keys and admin-only template purpose',()=>{
  assert.match(gateway,/loox_template_admin===true/);
  assert.match(gateway,/makeThumbnail\(bytes\)/);
 });
+
+test('R2 template videos require admin, size, checksum and a scoped private upload',()=>{
+ const gateway=readFileSync(new URL('../lib/r2-media.js',import.meta.url),'utf8');
+ assert.match(gateway,/template_video_prepare/);
+ assert.match(gateway,/loox_template_admin===true/);
+ assert.match(gateway,/presignR2Object\('PUT',path/);
+ assert.match(gateway,/info.sha256===sha256/);
+});
+test('chat attachments verify thread ownership and use private R2 objects',()=>{
+ const chat=readFileSync(new URL('../lib/chat-attachments.js',import.meta.url),'utf8');
+ assert.match(chat,/user_id:'eq.'\+user.id/);
+ assert.match(chat,/userKey\(user.id,'chat',id,'image\/webp'\)/);
+ assert.match(chat,/presignR2Object\('GET',row.object_key/);
+ assert.match(chat,/deleteR2Object\(found.object_key\)/);
+});

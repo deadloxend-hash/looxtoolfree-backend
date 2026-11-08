@@ -7,6 +7,7 @@ import {checkout,portal} from '../lib/billing.js';
 import {templateAction} from '../lib/templates.js';
 import {r2Ready} from '../lib/r2.js';
 import {r2MediaAction} from '../lib/r2-media.js';
+import {chatAttachmentAction} from '../lib/chat-attachments.js';
 import {mediaURL,removeJobMedia} from '../lib/media-store.js';
 
 async function publicMedia(req,res){
@@ -59,6 +60,7 @@ export default handler(async(req,res)=>{
  const action=req.query.action;
  if(typeof action==='string'&&action.startsWith('community_'))return communityAction(req,res,action.slice(10));
  if(action==='r2_media')return r2MediaAction(req,res);
+ if(typeof action==='string'&&action.startsWith('chat_attachment_'))return chatAttachmentAction(req,res,action.slice('chat_attachment_'.length));
  if(typeof action==='string'&&action.startsWith('template_'))return templateAction(req,res,action.slice(9));
  if(action==='config'){
   method(req,'GET');
