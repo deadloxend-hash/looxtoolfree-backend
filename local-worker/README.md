@@ -38,3 +38,18 @@ The Face Swap page at `/faceswap.html` now sends two PNG inputs through the auth
 5. Keep ComfyUI and the worker running. Open `faceswap.html`, sign in, upload the target photo and consenting source face, check both permission boxes, then process. The default credit cost is **6 credits**, billed on success (failed jobs release reserved credits).
 
 Privacy: image uploads are normalized and stripped of EXIF on the backend, kept in private Supabase Storage, and sent to the local worker only as expiring signed URLs. The worker uploads both images to local ComfyUI and stores the PNG result in the user's private library. The maintenance job removes source input images from private storage after the job is settled. No direct public ComfyUI port or third-party face-swap API is needed. Your PC must remain online for jobs to finish.
+
+## FLUX.1 Schnell reference-image (image-to-image)
+
+The Image Generator now has an upload button and reference similarity control for FLUX.1 Schnell. It uses the **same** `generate` credit operation and existing `flux-api.json` checkpoint, with ComfyUI's native `LoadImage`, `ImageScale`, `VAEEncode` and `KSampler` nodes. **No additional model download is required** for basic image-to-image.
+
+To activate it on the Windows machine:
+1. Download the **latest** `local-worker/loox-worker.py` from this repository and replace your older local worker script. Keep `worker.env` private and unchanged. Keep `flux-api.json` beside the script.
+2. Start ComfyUI on localhost:8188, then restart `run-loox-worker.bat`. Keep both running.
+3. Wait for the worker's next ping/claim; `GET /api/loox?action=config` will then include `local.referenceAvailable: true` while the worker is online.
+4. Refresh the Image Generator, select FLUX.1 Schnell, click **+**, upload a JPG/PNG/WebP under 2.4 MB and 4 megapixels, choose Reference similarity (20–80%), confirm image permission, and generate.
+5. A stronger similarity value retains more of the uploaded picture; a lower value allows more changes. This is **basic img2img**, not FLUX Redux or an identity-preserving face tool.
+
+Security: the backend validates and re-encodes the image into private storage and passes only a short-lived signed link to the local worker. The database queue contains no raw base64 image, input images are not published to Community, and the maintenance task deletes reference files after jobs settle. The image is not stored in the browser's saved session or posted publicly automatically.
+
+Until the updated local worker is running, a reference request is rejected **before reserving credits**, while plain FLUX text-to-image remains available.
