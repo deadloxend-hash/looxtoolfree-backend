@@ -32,9 +32,10 @@ test('worker reference images use expiring authenticated proxy URLs',async()=>{
  try {
   const url=new URL(workerInputURL(key,600));
   assert.equal(url.origin,'https://looxtoolfree-backend.vercel.app');
-  assert.equal(url.pathname,'/api/local-worker');
-  assert.equal(url.searchParams.get('action'),'input');
-  assert.equal(url.searchParams.get('path'),key);
+  assert.equal(url.pathname,'/storage/v1/object/sign/loox-results/'+key);
+  const v=JSON.parse(readFileSync(new URL('../vercel.json',import.meta.url),'utf8'));
+  assert.ok(v.rewrites.some(r=>r.source==='/storage/v1/object/sign/loox-results/:path*'&&
+    r.destination==='/api/local-worker?action=input&path=:path*'));
   const exp=Number(url.searchParams.get('exp'));
   assert.ok(exp>Math.floor(Date.now()/1000)+580&&exp<Math.floor(Date.now()/1000)+620);
   const expected=createHmac('sha256',process.env.LOOX_IDENTITY_SECRET)
@@ -48,6 +49,7 @@ test('worker reference images use expiring authenticated proxy URLs',async()=>{
 });
 test('bundled Windows worker accepts signed backend input links',()=>{
  const worker=readFileSync(new URL('../local-worker/loox-worker.py',import.meta.url),'utf8');
+ assert.match(worker,/allowed_backend_rewrite/);
  assert.match(worker,/allowed_worker_proxy/);
  assert.match(worker,/parsed.path == "\/api\/local-worker"/);
  assert.match(worker,/args.get\("action"\) == \["input"\]/);
