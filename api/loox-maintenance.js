@@ -19,7 +19,7 @@ export default handler(async(req,res)=>{
   .then(value=>({status:'fulfilled',value}),reason=>({status:'rejected',reason})));
  const finished=await rows('jobs',{state:'in.(failed,succeeded)',inputs_clean:'eq.false',select:'id,user_id',limit:'200'});
  if(finished.length){
-  const prefixes=finished.flatMap(j=>['image','mask','target_image','swap_image'].map(f=>j.user_id+'/'+j.id+'-'+f+'.png'));
+  const prefixes=finished.flatMap(j=>['image','mask','target_image','swap_image','reference_image'].map(f=>j.user_id+'/'+j.id+'-'+f+'.png'));
   await supa('/storage/v1/object/loox-results',{method:'DELETE',body:JSON.stringify({prefixes})});
   await supa('/rest/v1/loox_jobs?id=in.('+finished.map(j=>j.id).join(',')+')',{method:'PATCH',body:JSON.stringify({inputs_clean:true})});
  }
