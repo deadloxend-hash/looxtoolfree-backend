@@ -20,3 +20,16 @@ test('cloud generation verifies R2 before atomically settling the job',()=>{
  assert.match(imageCloud,/rpc\('finish_media'/);
  assert.doesNotMatch(imageCloud,/storage\/v1\/object\/loox-results/);
 });
+
+test('worker reference images use real private R2 presigned GET URLs',()=>{
+ const store=readFileSync(new URL('../lib/media-store.js',import.meta.url),'utf8');
+ assert.match(store,/presignR2Object\('GET',key,\{expires\}\)/);
+ assert.doesNotMatch(store,/new URL\('\/storage\/v1\/object\/sign\/loox-results/);
+});
+test('R2 uploads use accepted keys and admin-only template purpose',()=>{
+ const gateway=readFileSync(new URL('../lib/r2-media.js',import.meta.url),'utf8');
+ assert.match(gateway,/userKey\(user.id,'community',id,'image\/webp'\)/);
+ assert.match(gateway,/public\/templates\//);
+ assert.match(gateway,/loox_template_admin===true/);
+ assert.match(gateway,/makeThumbnail\(bytes\)/);
+});
