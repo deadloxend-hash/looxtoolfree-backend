@@ -6,7 +6,11 @@ import {migrateMediaBatch} from '../lib/r2-migration.js';
 import {userKey} from '../lib/media-store.js';
 import {deleteR2Object} from '../lib/r2.js';
 export default handler(async(req,res)=>{
- method(req,'GET');need(env.CRON_SECRET&&equal(req.headers.authorization,'Bearer '+env.CRON_SECRET),401,'Unauthorized.');
+ method(req,'GET');
+ const authorization=req.headers.authorization||'';
+ const cron=env.CRON_SECRET&&equal(authorization,'Bearer '+env.CRON_SECRET);
+ const migration=req.query.action==='r2_migrate'&&env.LOOX_MIGRATION_TOKEN&&equal(authorization,'Bearer '+env.LOOX_MIGRATION_TOKEN);
+ need(cron||migration,401,'Unauthorized.');
  if(req.query.action==='r2_migrate')return res.json(await migrateMediaBatch(Number(req.query.limit||8)));
  await rpc('local_expire',{});
  const staleCloud=await rows('jobs',{state:'in.(reserved,processing)',operation:'in.('+cloudOperations.join(',')+')',created_at:'lt.'+new Date(Date.now()-10*60000).toISOString(),select:'id',limit:'100'});
