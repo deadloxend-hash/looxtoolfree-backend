@@ -149,8 +149,14 @@ def build_prompt(job):
             graph["802"] = {"class_type": "VAEEncode",
                            "inputs": {"pixels": ["801", 0], "vae": ["73", 2]}}
             graph["70"]["inputs"]["latent_image"] = ["802", 0]
-            # Higher reference strength preserves more of the uploaded image.
-            graph["70"]["inputs"]["denoise"] = round(1.0 - strength, 2)
+            # Schnell's original 4-step text-to-image workflow runs almost no
+            # useful denoising at e.g. 65% similarity (1 - .65 = .35).
+            # For img2img, use additional sampling steps and a non-linear
+            # edit-strength range so the prompt can actually change the image.
+            # Strong edits can change the subject; exact background-only edits
+            # require a mask/inpainting workflow, not plain img2img.
+            graph["70"]["inputs"]["steps"] = 8
+            graph["70"]["inputs"]["denoise"] = round(0.95 - (strength - 0.2) * (0.35 / 0.6), 3)
     return graph
 
 def generate(job):
