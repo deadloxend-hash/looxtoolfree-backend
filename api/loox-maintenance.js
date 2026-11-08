@@ -9,8 +9,7 @@ export default handler(async(req,res)=>{
  method(req,'GET');
  const authorization=req.headers.authorization||'';
  const cron=env.CRON_SECRET&&equal(authorization,'Bearer '+env.CRON_SECRET);
- const migration=req.query.action==='r2_migrate'&&env.LOOX_MIGRATION_TOKEN&&equal(authorization,'Bearer '+env.LOOX_MIGRATION_TOKEN);
- need(cron||migration,401,'Unauthorized.');
+ need(cron,401,'Unauthorized.');
  if(req.query.action==='r2_migrate')return res.json(await migrateMediaBatch(Number(req.query.limit||8)));
  await rpc('local_expire',{});
  const staleCloud=await rows('jobs',{state:'in.(reserved,processing)',operation:'in.('+cloudOperations.join(',')+')',created_at:'lt.'+new Date(Date.now()-10*60000).toISOString(),select:'id',limit:'100'});
