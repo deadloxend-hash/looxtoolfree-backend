@@ -1,4 +1,5 @@
 import {authenticate,account,authReady,handler,method,json,need,limit,rows,supa,uuid} from '../lib/core.js';
+import {deleteR2Object} from '../lib/r2.js';
 
 // All requests are authenticated against Supabase. Service-only storage is
 // always filtered by the verified account's user_id.
@@ -39,10 +40,21 @@ export default handler(async(req,res)=>{
  if(action==='delete'){
   need(typeof b.id==='string'&&uuid.test(b.id),400,'Invalid chat ID.');
   await limit(u,'delete-chat',30,60);
+  const [owned]=await rows('chat_threads',{id:'eq.'+b.id,user_id:'eq.'+u.id,select:'id',limit:'1'});
+  need(owned,404,'Chat not found.');
+  const images=await rows('chat_attachments',{thread_id:'eq.'+b.id,user_id:'eq.'+u.id,
+   select:'object_key,thumbnail_key',limit:'1000'});
+  // Delete the database thread first (attachments cascade); never risk
+  // deleting someone's R2 media if the ownership check or DB write fails.
   await supa('/rest/v1/loox_chat_threads?'+new URLSearchParams({id:'eq.'+b.id,user_id:'eq.'+u.id}),{
    method:'DELETE'
   });
-  return res.json({deleted:true});
+  const removed=await Promise.allSettled(images.flatMap(item=>
+   [item.object_key,item.thumbnail_key].filter(key=>typeof key==='string'&&
+    (key.startsWith('users/'+u.id+'/chat/')||key.startsWith('users/'+u.id+'/thumbnails/')))
+    .map(key=>deleteR2Object(key))));
+  const pending_cleanup=removed.filter(item=>item.status==='rejected').length;
+  return res.json({deleted:true,pending_cleanup});
  }
  need(false,404,'Unknown history action.');
 });
