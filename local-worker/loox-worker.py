@@ -3,6 +3,7 @@ Run run-loox-worker.bat. ComfyUI must already be running at localhost:8188.
 NEVER commit worker.env to GitHub.
 """
 import copy
+import hashlib
 import json
 import os
 import pathlib
@@ -62,7 +63,9 @@ def dimensions(ratio):
 def upload_face_image(url, job_id, role):
     # Only fetch private, short-lived HTTPS storage URLs sent by the LOOX backend.
     parsed = urllib.parse.urlparse(url)
-    if parsed.scheme != "https" or not parsed.path.startswith("/storage/v1/object/sign/loox-results/"):
+    allowed_supabase = parsed.path.startswith("/storage/v1/object/sign/loox-results/")
+    allowed_r2 = parsed.hostname and parsed.hostname.endswith(".r2.cloudflarestorage.com") and "/users/" in parsed.path and "/inputs/" in parsed.path
+    if parsed.scheme != "https" or not (allowed_supabase or allowed_r2):
         raise ValueError("Unexpected input image URL.")
     data = request(url, timeout=35)
     if not data.startswith(b"\x89PNG\r\n\x1a\n") or len(data) > 8_000_000:
@@ -212,13 +215,13 @@ def run_job(job):
         if len(output) > upload["max_bytes"]:
             raise ValueError("Output is too large for the private storage limit.")
         result = request(upload["upload_url"], "PUT", output, {
-            "Content-Type": "video/mp4" if job["operation"] == "generate_video" else "image/png",
-            "x-upsert": "false"}, 120)
+            "Content-Type": upload.get("content_type") or ("video/mp4" if job["operation"] == "generate_video" else "image/png")}, 120)
         # Once a result is uploaded, never treat an intermittent completion
         # request failure as a generation failure or refund the successful job.
         for attempt in range(5):
             try:
-                backend("complete", {"id": name, "lease": job["lease"], "success": True})
+                backend("complete", {"id": name, "lease": job["lease"], "success": True,
+                                      "sha256": hashlib.sha256(output).hexdigest()})
                 print("Finished and delivered:", name)
                 return
             except Exception as settle:

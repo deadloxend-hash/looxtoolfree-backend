@@ -1,4 +1,6 @@
 import {env,need,handler,method,json,rows,rpc,supa,equal,uuid,Problem} from '../lib/core.js';
+import {userKey,verifyUploadedMedia} from '../lib/media-store.js';
+import {presignR2Object} from '../lib/r2.js';
 
 // This service never listens on the user's PC. The Windows worker polls over outbound HTTPS.
 function authorized(req){
@@ -32,19 +34,20 @@ export default handler(async(req,res)=>{
   }
   if(action==='upload'){
     const q=await ownership(b);
-    const path=q.user_id+'/'+q.job_id+(q.operation==='generate_video'?'.mp4':'.png');
-    const r=await supa('/storage/v1/object/upload/sign/loox-results/'+path,{method:'POST',body:'{}'});
-    need(typeof r.url==='string',503,'Storage could not prepare the upload.');
-    const url=new URL(env.SUPABASE_URL.replace(/\/$/,'')+'/storage/v1'+r.url);
-    need(url.origin===new URL(env.SUPABASE_URL).origin&&url.pathname==='/storage/v1/object/upload/sign/loox-results/'+path&&url.searchParams.has('token'),503,'Invalid storage upload target.');
-    return res.json({upload_url:url.href,path,max_bytes:q.operation==='generate_video'?40_000_000:16_000_000});
+    const type=q.operation==='generate_video'?'video/mp4':'image/png';
+    const path=userKey(q.user_id,'generations',q.job_id,type);
+    return res.json({upload_url:presignR2Object('PUT',path,{expires:900,contentType:type}),path,content_type:type,max_bytes:q.operation==='generate_video'?40_000_000:16_000_000});
   }
   if(action==='complete'){
     const q=await ownership(b);
-    const path=b.success===true?q.user_id+'/'+q.job_id+(q.operation==='generate_video'?'.mp4':'.png'):null;
-    // The database atomically verifies private storage existence, owner path,
-    // size limits, and lease before marking a job successful.
-    const ok=await rpc('local_complete',{p_id:b.id,p_lease:b.lease,p_path:path});
+    if(b.success!==true){
+     const ok=await rpc('local_complete',{p_id:b.id,p_lease:b.lease,p_path:null});
+     need(ok,409,'Job already settled or lease expired.');
+     return res.json({completed:true});
+    }
+    const type=q.operation==='generate_video'?'video/mp4':'image/png';
+    const media=await verifyUploadedMedia({user:q.user_id,id:q.job_id,type,expectedSha:typeof b.sha256==='string'?b.sha256:null});
+    const ok=await rpc('local_complete_media',{p_id:b.id,p_lease:b.lease,p_provider:'r2',p_key:media.key,p_thumbnail:media.thumbnail_key,p_type:media.type,p_bytes:media.bytes,p_sha256:media.sha256});
     need(ok,409,'Job already settled or lease expired.');
     return res.json({completed:true});
   }
