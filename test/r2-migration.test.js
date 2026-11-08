@@ -21,10 +21,36 @@ test('cloud generation verifies R2 before atomically settling the job',()=>{
  assert.doesNotMatch(imageCloud,/storage\/v1\/object\/loox-results/);
 });
 
-test('worker reference images use real private R2 presigned GET URLs',()=>{
- const store=readFileSync(new URL('../lib/media-store.js',import.meta.url),'utf8');
- assert.match(store,/presignR2Object\('GET',key,\{expires\}\)/);
- assert.doesNotMatch(store,/new URL\('\/storage\/v1\/object\/sign\/loox-results/);
+test('worker reference images use expiring authenticated proxy URLs',async()=>{
+ const {workerInputURL}=await import('../lib/media-store.js');
+ const {createHmac}=await import('node:crypto');
+ const key='users/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/inputs/bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb-reference_image.png';
+ const saved=process.env.LOOX_IDENTITY_SECRET;
+ const base=process.env.LOOX_BACKEND_URL;
+ process.env.LOOX_IDENTITY_SECRET='a'.repeat(64);
+ process.env.LOOX_BACKEND_URL='https://looxtoolfree-backend.vercel.app';
+ try {
+  const url=new URL(workerInputURL(key,600));
+  assert.equal(url.origin,'https://looxtoolfree-backend.vercel.app');
+  assert.equal(url.pathname,'/api/local-worker');
+  assert.equal(url.searchParams.get('action'),'input');
+  assert.equal(url.searchParams.get('path'),key);
+  const exp=Number(url.searchParams.get('exp'));
+  assert.ok(exp>Math.floor(Date.now()/1000)+580&&exp<Math.floor(Date.now()/1000)+620);
+  const expected=createHmac('sha256',process.env.LOOX_IDENTITY_SECRET)
+    .update('worker-media:'+key+':'+exp).digest('hex');
+  assert.equal(url.searchParams.get('sig'),expected);
+  assert.throws(()=>workerInputURL('users/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/inputs/../../foreign.png',600));
+ }finally{
+  if(saved==null)delete process.env.LOOX_IDENTITY_SECRET;else process.env.LOOX_IDENTITY_SECRET=saved;
+  if(base==null)delete process.env.LOOX_BACKEND_URL;else process.env.LOOX_BACKEND_URL=base;
+ }
+});
+test('bundled Windows worker accepts signed backend input links',()=>{
+ const worker=readFileSync(new URL('../local-worker/loox-worker.py',import.meta.url),'utf8');
+ assert.match(worker,/allowed_worker_proxy/);
+ assert.match(worker,/parsed.path == "\/api\/local-worker"/);
+ assert.match(worker,/args.get\("action"\) == \["input"\]/);
 });
 test('R2 uploads use accepted keys and admin-only template purpose',()=>{
  const gateway=readFileSync(new URL('../lib/r2-media.js',import.meta.url),'utf8');

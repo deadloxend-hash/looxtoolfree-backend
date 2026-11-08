@@ -63,9 +63,21 @@ def dimensions(ratio):
 def upload_face_image(url, job_id, role):
     # Only fetch private, short-lived HTTPS storage URLs sent by the LOOX backend.
     parsed = urllib.parse.urlparse(url)
-    allowed_supabase = parsed.path.startswith("/storage/v1/object/sign/loox-results/")
-    allowed_r2 = parsed.hostname and parsed.hostname.endswith(".r2.cloudflarestorage.com") and "/users/" in parsed.path and "/inputs/" in parsed.path
-    if parsed.scheme != "https" or not (allowed_supabase or allowed_r2):
+    allowed_supabase = bool(parsed.hostname and parsed.hostname.endswith(".supabase.co") and
+                            parsed.path.startswith("/storage/v1/object/sign/loox-results/"))
+    allowed_r2 = bool(parsed.hostname and parsed.hostname.endswith(".r2.cloudflarestorage.com") and
+                      "/users/" in parsed.path and "/inputs/" in parsed.path)
+    args = urllib.parse.parse_qs(parsed.query)
+    allowed_worker_proxy = bool(
+        parsed.hostname == urllib.parse.urlparse(BACKEND).hostname and
+        parsed.path == "/api/local-worker" and
+        args.get("action") == ["input"] and
+        len(args.get("path", [])) == 1 and "/inputs/" in args["path"][0] and
+        args["path"][0].startswith("users/") and
+        len(args.get("exp", [])) == 1 and args["exp"][0].isdigit() and
+        len(args.get("sig", [])) == 1 and len(args["sig"][0]) == 64
+    )
+    if parsed.scheme != "https" or parsed.port not in (None, 443) or not (allowed_supabase or allowed_r2 or allowed_worker_proxy):
         raise ValueError("Unexpected input image URL.")
     data = request(url, timeout=35)
     if not data.startswith(b"\x89PNG\r\n\x1a\n") or len(data) > 8_000_000:
