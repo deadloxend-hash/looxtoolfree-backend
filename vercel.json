@@ -1,5 +1,5 @@
 {
-  "functions": {"api/loox*.js":{"maxDuration":120},"api/worker-media.js":{"maxDuration":30}},
-  "rewrites":[{"source":"/storage/v1/object/sign/loox-results/:path*","destination":"/api/worker-media?path=:path*"}],
+  "functions": {"api/loox*.js":{"maxDuration":120}},
+  "rewrites":[{"source":"/storage/v1/object/sign/loox-results/:path*","destination":"/api/local-worker?action=input&path=:path*"}],
   "crons":[{"path":"/api/loox-maintenance","schedule":"19 3 * * *"}]
 }
