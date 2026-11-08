@@ -66,7 +66,7 @@ def upload_face_image(url, job_id, role):
         raise ValueError("Unexpected input image URL.")
     data = request(url, timeout=35)
     if not data.startswith(b"\x89PNG\r\n\x1a\n") or len(data) > 8_000_000:
-        raise ValueError("The private face-swap image must be a PNG under 8 MB.")
+        raise ValueError("The private input image must be a PNG under 8 MB.")
     name = "loox_" + job_id.replace("-", "") + "_" + role + ".png"
     boundary = "LOOXBoundary" + job_id.replace("-", "")
     body = (
@@ -132,6 +132,25 @@ def build_prompt(job):
         w, h = dimensions(job["input"].get("aspect_ratio"))
         graph["68"]["inputs"].update(width=w, height=h, batch_size=1)
         graph["70"]["inputs"]["seed"] = seed
+        if job["input"].get("reference_image"):
+            # FLUX.1 Schnell img2img using stock ComfyUI nodes. No additional
+            # face-swap, Redux, or other model weights are required.
+            if graph["73"].get("class_type") != "CheckpointLoaderSimple" or graph["70"].get("class_type") != "KSampler":
+                raise ValueError("Unsupported FLUX API workflow: expected CheckpointLoaderSimple and KSampler.")
+            strength = float(job["input"]["reference_strength"])
+            if not 0.2 <= strength <= 0.8:
+                raise ValueError("Reference strength must be between 20 and 80 percent.")
+            filename = upload_face_image(job["input"]["reference_image"], job["id"], "reference")
+            graph["800"] = {"class_type": "LoadImage",
+                           "inputs": {"image": filename}}
+            graph["801"] = {"class_type": "ImageScale",
+                           "inputs": {"image": ["800", 0], "upscale_method": "lanczos",
+                                      "width": w, "height": h, "crop": "center"}}
+            graph["802"] = {"class_type": "VAEEncode",
+                           "inputs": {"pixels": ["801", 0], "vae": ["73", 2]}}
+            graph["70"]["inputs"]["latent_image"] = ["802", 0]
+            # Higher reference strength preserves more of the uploaded image.
+            graph["70"]["inputs"]["denoise"] = round(1.0 - strength, 2)
     return graph
 
 def generate(job):
@@ -211,7 +230,7 @@ def run_job(job):
             print("Failed to settle job; backend will expire it:", str(settle)[:200])
 
 def supported_modes():
-    return (["generate"] if IMAGE_JSON.exists() else []) + (
+    return (["generate", "generate_reference"] if IMAGE_JSON.exists() else []) + (
         ["generate_video"] if VIDEO_JSON.exists() else []) + (
         ["face_swap"] if FACE_JSON.exists() else [])
 
