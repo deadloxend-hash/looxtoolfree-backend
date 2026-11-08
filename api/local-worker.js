@@ -1,6 +1,6 @@
-import {env,need,handler,method,json,rows,rpc,supa,equal,uuid,Problem} from '../lib/core.js';
+import {env,need,handler,method,json,rows,rpc,supa,equal,mac,uuid,Problem} from '../lib/core.js';
 import {userKey,verifyUploadedMedia} from '../lib/media-store.js';
-import {presignR2Object} from '../lib/r2.js';
+import {getR2Object,presignR2Object} from '../lib/r2.js';
 
 // This service never listens on the user's PC. The Windows worker polls over outbound HTTPS.
 function authorized(req){
@@ -16,6 +16,13 @@ async function ownership(body) {
   return q;
 }
 export default handler(async(req,res)=>{
+  if(req.method==='GET'&&req.query.action==='input'){
+    const key=String(req.query.path||''),exp=Number(req.query.exp),sig=String(req.query.sig||'');
+    need(/^users\/[a-f0-9-]{36}\/inputs\/[a-z0-9._-]+$/i.test(key)&&Number.isInteger(exp)&&exp>=Math.floor(Date.now()/1000)&&exp<=Math.floor(Date.now()/1000)+7205,403,'Worker media link expired.');
+    need(/^[a-f0-9]{64}$/.test(sig)&&equal(sig,mac('worker-media:'+key+':'+exp)),403,'Invalid worker media link.');
+    const media=await getR2Object(key);need(media.type==='image/png'&&media.bytes.length<=8_000_000,415,'Worker input is invalid.');
+    res.setHeader('Content-Type','image/png');res.setHeader('Content-Length',String(media.bytes.length));res.setHeader('Cache-Control','private, no-store');return res.end(media.bytes);
+  }
   authorized(req);
   method(req,'POST');
   const b=json(req);
@@ -52,4 +59,4 @@ export default handler(async(req,res)=>{
     return res.json({completed:true});
   }
   throw new Problem(404,'Unknown worker action.');
-});
+},{cors:false});
