@@ -123,6 +123,8 @@ end $$;
 
 create index if not exists loox_media_entries_session_order on public.loox_media_entries(user_id,session_id,created_at,id);
 create index if not exists loox_media_sessions_owner_updated on public.loox_media_sessions(user_id,updated_at desc,id);
+create index if not exists loox_chat_attachments_thread_fk on public.loox_chat_attachments(thread_id);
+create index if not exists loox_chat_attachments_message_fk on public.loox_chat_attachments(message_id);
 
 insert into public.loox_media_migrations(source_bucket,source_path,target_key,owner_id,category,source_bytes)
 select o.bucket_id,o.name,
@@ -135,6 +137,12 @@ select o.bucket_id,o.name,
  coalesce((o.metadata->>'size')::bigint,0)
 from storage.objects o where o.bucket_id in ('loox-results','loox-avatars','loox-templates')
 on conflict(source_bucket,source_path) do nothing;
+
+update public.loox_community_posts p
+set media_provider=j.storage_provider,media_key=j.object_key,thumbnail_key=j.thumbnail_key
+from public.loox_jobs j
+where p.job_id=j.id and j.storage_provider='r2' and j.object_key is not null
+ and (p.media_provider is distinct from 'r2' or p.media_key is distinct from j.object_key);
 
 create or replace function loox_private.loox_save_creator(p_username text,p_name text,p_bio text,p_avatar text default null)
 returns void language plpgsql security definer set search_path='' as $$
