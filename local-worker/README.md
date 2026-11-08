@@ -27,6 +27,10 @@ The worker connects over outbound HTTPS to Vercel, so no Cloudflare Tunnel, rout
 
 All jobs require logged-in LOOX users, rate limits, credits, private result storage, and a running worker. Outputs are capped at 16MB for PNG and 40MB for MP4. Never publish `worker.env`, `LOOX_WORKER_SECRET`, or your Supabase service role key.
 
+## R2 worker update
+
+If this worker was installed before the R2 migration, stop it, replace only `loox-worker.py` with the current repository version, and run `run-loox-worker.bat` again. Keep your existing `worker.env` and ComfyUI workflow JSON files. The updated worker accepts private R2 input links, uploads large outputs directly to a short-lived single-object R2 URL, and sends a SHA-256 checksum when confirming completion. Older workers can process text-only jobs, but reference-image and checksum verification require this update.
+
 ## ReActor face swap (consent-only, licensed use)
 
 The Face Swap page at `/faceswap.html` now sends two PNG inputs through the authenticated Vercel backend to the existing private ComfyUI worker. The workflow is based on the user's API-format ReActor export. The submitted export had no `source_image` connection; `faceswap-api.json` fixes that with a second `LoadImage` node.
@@ -37,7 +41,7 @@ The Face Swap page at `/faceswap.html` now sends two PNG inputs through the auth
 4. After confirming licensing and testing ReActor locally, set **`LOOX_FACE_SWAP_LICENSED=true`** in Vercel **Production** environment, redeploy the backend and restart `run-loox-worker.bat`. Do not set this flag before licensing is confirmed.
 5. Keep ComfyUI and the worker running. Open `faceswap.html`, sign in, upload the target photo and consenting source face, check both permission boxes, then process. The default credit cost is **6 credits**, billed on success (failed jobs release reserved credits).
 
-Privacy: image uploads are normalized and stripped of EXIF on the backend, kept in private Supabase Storage, and sent to the local worker only as expiring signed URLs. The worker uploads both images to local ComfyUI and stores the PNG result in the user's private library. The maintenance job removes source input images from private storage after the job is settled. No direct public ComfyUI port or third-party face-swap API is needed. Your PC must remain online for jobs to finish.
+Privacy: image uploads are normalized and stripped of EXIF on the backend, kept in private Cloudflare R2, and sent to the local worker only as expiring signed URLs. The worker uploads both images to local ComfyUI and sends the result directly to a short-lived, single-object R2 upload URL. The backend verifies size, file type and SHA-256 before settling credits. The maintenance job removes source input images after the job is settled. No direct public ComfyUI port or third-party face-swap API is needed. Your PC must remain online for jobs to finish.
 
 ## FLUX.1 Schnell reference-image (image-to-image)
 

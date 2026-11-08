@@ -7,6 +7,25 @@ import {checkout,portal} from '../lib/billing.js';
 import {templateAction} from '../lib/templates.js';
 import {r2Ready} from '../lib/r2.js';
 import {r2MediaAction} from '../lib/r2-media.js';
+import {mediaURL,removeJobMedia} from '../lib/media-store.js';
+
+async function publicMedia(req,res){
+ const type=String(req.query.type||''),id=String(req.query.id||''),thumbnail=req.query.variant!=='original';
+ let item=null;
+ if(type==='post'){
+  const [post]=await rows('community_posts',{id:'eq.'+id,status:'eq.approved',visible:'eq.true',select:'creator_id,media_path,media_provider,media_key,thumbnail_key',limit:'1'});
+  if(post){const [profile]=await rows('creator_profiles',{user_id:'eq.'+post.creator_id,is_private:'eq.false',select:'user_id',limit:'1'});if(profile)item={storage_provider:post.media_provider,object_key:post.media_key,thumbnail_key:post.thumbnail_key,result_path:post.media_path};}
+ }else if(type==='template'){
+  const [template]=await rows('template_catalog',{id:'eq.'+id,active:'eq.true',select:'media_path,media_provider,media_key,thumbnail_key',limit:'1'});
+  if(template)item={storage_provider:template.media_provider,object_key:template.media_key,thumbnail_key:template.thumbnail_key,result_path:template.media_path,legacy_bucket:'loox-templates'};
+ }else if(type==='avatar'){
+  const [profile]=await rows('creator_profiles',{user_id:'eq.'+id,is_private:'eq.false',select:'avatar_path,avatar_provider,avatar_key,avatar_thumbnail_key',limit:'1'});
+  if(profile)item={storage_provider:profile.avatar_provider,object_key:profile.avatar_key,thumbnail_key:profile.avatar_thumbnail_key,result_path:profile.avatar_path,legacy_bucket:'loox-avatars'};
+ }
+ need(item,404,'Public media is unavailable.');
+ const url=await mediaURL(item,{thumbnail,expires:300});need(url,404,'Public media is unavailable.');
+ res.setHeader('Cache-Control','public, max-age=240, stale-while-revalidate=60');return res.json({url,expires_in:300});
+}
 
 async function overview(u){
  const own={user_id:'eq.'+u.id}, recent={...own,order:'created_at.desc',limit:'40'};
@@ -48,6 +67,7 @@ export default handler(async(req,res)=>{
   return res.json({auth:authReady(),ai:aiReady(),billing:billingReady(),r2Media:{configured:r2Ready(),imagesOnly:true},testBilling:env.LEMON_MODE==='test',plans,operations,local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000),referenceAvailable:Boolean(aiReady()&&localWorker?.modes?.includes('generate_reference')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations).map(m=>m.id==='z_image_turbo'?{...m,available:Boolean(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000)?'available':m.status}:m),videoModels:videoCatalog(operations),faceSwap:{available:Boolean(env.LOOX_FACE_SWAP_LICENSED==='true'&&aiReady()&&localWorker?.modes?.includes('face_swap')&&Date.now()-Date.parse(localWorker.last_seen)<90000),cost:operations.find(o=>o.id==='face_swap')?.cost??6},
    ...(authReady()?{url:env.SUPABASE_URL,key:env.SUPABASE_PUBLISHABLE_KEY}:{})});
  }
+ if(action==='public_media'){method(req,'GET');return publicMedia(req,res);}
  const u=await authenticate(req);
  await limit(u,'api',100);
  await account(u);
@@ -76,18 +96,20 @@ export default handler(async(req,res)=>{
   need(Number.isInteger(offset)&&offset>=0&&offset<=240,400,'Invalid history page.');
   const operation=req.query.operation==='generate_video'?'generate_video':'generate';
   const jobs=await rows('jobs',{user_id:'eq.'+u.id,operation:operation==='generate'?'in.('+['generate','generate_z_image',...cloudOperations].join(',')+')':'in.('+['generate_video',...cloudVideoOperations].join(',')+')',state:'eq.succeeded',result_path:'not.is.null',
-   select:'id,prompt,operation,created_at,result_path',order:'created_at.desc',limit:'12',offset:String(offset)});
+   select:'id,prompt,operation,created_at,result_path,storage_provider,object_key,thumbnail_key,media_type',order:'created_at.desc',limit:'12',offset:String(offset)});
   const items=await Promise.all(jobs.map(async j=>{
    let url=null;
-   if(j.result_path){
-    try{
-     const signed=await supa('/storage/v1/object/sign/loox-results/'+j.result_path,{method:'POST',body:JSON.stringify({expiresIn:300})});
-     if(signed?.signedURL)url=env.SUPABASE_URL+'/storage/v1'+signed.signedURL;
-    }catch{}
-   }
+   try{url=await mediaURL(j,{thumbnail:true});}catch{}
    return {id:j.id,prompt:j.prompt||null,model:j.operation.replace(/^generate_?/, '')||'flux',created_at:j.created_at,url};
   }));
   return res.json({items,has_more:jobs.length===12});
+ }
+ if(action==='status_batch'){
+  method(req,'GET');
+  const ids=String(req.query.ids||'').split(',').filter(Boolean);need(ids.length>0&&ids.length<=40&&ids.every(id=>/^[a-f0-9-]{36}$/i.test(id)),400,'Invalid job list.');
+  const jobs=await rows('jobs',{id:'in.('+ids.join(',')+')',user_id:'eq.'+u.id,select:'id,state,failure_code,result_path,storage_provider,object_key,thumbnail_key,media_type'});
+  const items=await Promise.all(jobs.map(async job=>({id:job.id,state:job.state,failure_code:job.failure_code||null,url:job.state==='succeeded'?await mediaURL(job,{thumbnail:true}).catch(()=>null):null})));
+  return res.json({items});
  }
  if(action==='status'){method(req,'GET');const [j]=await rows('jobs',{id:'eq.'+req.query.id,user_id:'eq.'+u.id,select:'operation'});return res.json(j&&cloudVideoOperations.includes(j.operation)?await cloudVideoStatus(u,req.query.id):await status(u,req.query.id));}
  method(req,'POST');const b=json(req);
@@ -98,14 +120,14 @@ export default handler(async(req,res)=>{
  if(action==='delete_image'){
   await limit(u,'delete_image',20,600);
   need(typeof b.id==='string'&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(b.id),400,'Invalid image ID.');
-  const [job]=await rows('jobs',{id:'eq.'+b.id,user_id:'eq.'+u.id,operation:'in.('+['generate',...cloudOperations].join(',')+')',
-   state:'eq.succeeded',select:'id,result_path'});
+  const [job]=await rows('jobs',{id:'eq.'+b.id,user_id:'eq.'+u.id,operation:'in.('+['generate','generate_z_image',...cloudOperations].join(',')+')',
+   state:'eq.succeeded',select:'id,result_path,storage_provider,object_key,thumbnail_key'});
   need(job,404,'Image not found.');
-  if(job.result_path){
-   need(job.result_path.startsWith(u.id+'/'),403,'Invalid image path.');
-   await supa('/storage/v1/object/loox-results/'+job.result_path,{method:'DELETE'});
+  if(job.result_path||job.object_key){
+   need(!job.result_path||job.result_path.startsWith(u.id+'/'),403,'Invalid image path.');
+   await removeJobMedia(job);
    await supa('/rest/v1/loox_jobs?'+new URLSearchParams({id:'eq.'+job.id,user_id:'eq.'+u.id}),{
-    method:'PATCH',body:JSON.stringify({result_path:null})
+    method:'PATCH',body:JSON.stringify({result_path:null,object_key:null,thumbnail_key:null})
    });
   }
   return res.json({deleted:true});

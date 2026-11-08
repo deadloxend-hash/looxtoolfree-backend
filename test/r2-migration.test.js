@@ -12,10 +12,11 @@ test('R2 remains private and server-side',()=>{
  assert.doesNotMatch(r2,/publicBucket/);
 });
 test('migration verifies bytes before reporting success',()=>{
- assert.match(migration,/hash\(bytes\)===hash\(verified.bytes\)/);
+ assert.match(migration,/hash\(verified.bytes\)===checksum/);
  assert.doesNotMatch(migration,/method:\s*['\"]DELETE['\"]/);
 });
-test('cloud generation preserves original while mirroring to R2',()=>{
- assert.match(imageCloud,/putR2Object\(u.id\+'\/generations\/'.*png/);
- assert.match(imageCloud,/rpc\('finish'/);
+test('cloud generation verifies R2 before atomically settling the job',()=>{
+ assert.match(imageCloud,/saveGeneratedMedia/);
+ assert.match(imageCloud,/rpc\('finish_media'/);
+ assert.doesNotMatch(imageCloud,/storage\/v1\/object\/loox-results/);
 });

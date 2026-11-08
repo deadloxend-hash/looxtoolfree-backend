@@ -2,8 +2,12 @@ import {method,handler,env,need,equal,rows,supa,rpc} from '../lib/core.js';
 import {reconcile} from '../lib/jobs.js';
 import {cloudOperations} from '../lib/image-cloud.js';
 import {cloudVideoOperations,cloudVideoStatus} from '../lib/video-cloud.js';
+import {migrateMediaBatch} from '../lib/r2-migration.js';
+import {userKey} from '../lib/media-store.js';
+import {deleteR2Object} from '../lib/r2.js';
 export default handler(async(req,res)=>{
  method(req,'GET');need(env.CRON_SECRET&&equal(req.headers.authorization,'Bearer '+env.CRON_SECRET),401,'Unauthorized.');
+ if(req.query.action==='r2_migrate')return res.json(await migrateMediaBatch(Number(req.query.limit||8)));
  await rpc('local_expire',{});
  const staleCloud=await rows('jobs',{state:'in.(reserved,processing)',operation:'in.('+cloudOperations.join(',')+')',created_at:'lt.'+new Date(Date.now()-10*60000).toISOString(),select:'id',limit:'100'});
  for(const job of staleCloud)await rpc('finish',{p_id:job.id,p_path:null});
@@ -21,6 +25,8 @@ export default handler(async(req,res)=>{
  if(finished.length){
   const prefixes=finished.flatMap(j=>['image','mask','target_image','swap_image','reference_image'].map(f=>j.user_id+'/'+j.id+'-'+f+'.png'));
   await supa('/storage/v1/object/loox-results',{method:'DELETE',body:JSON.stringify({prefixes})});
+  const inputKeys=finished.flatMap(j=>['target_image','swap_image','reference_image','video-source'].map(f=>userKey(j.user_id,'inputs',j.id,'image/png','-'+f)));
+  for(let i=0;i<inputKeys.length;i+=10)await Promise.allSettled(inputKeys.slice(i,i+10).map(deleteR2Object));
   await supa('/rest/v1/loox_jobs?id=in.('+finished.map(j=>j.id).join(',')+')',{method:'PATCH',body:JSON.stringify({inputs_clean:true})});
  }
  await supa('/rest/v1/loox_limits?expires_at=lt.'+encodeURIComponent(new Date().toISOString()),{method:'DELETE'});
