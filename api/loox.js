@@ -25,7 +25,7 @@ async function publicMedia(req,res){
  }
  need(item,404,'Public media is unavailable.');
  const url=await mediaURL(item,{thumbnail,expires:300});need(url,404,'Public media is unavailable.');
- res.setHeader('Cache-Control','public, max-age=240, stale-while-revalidate=60');return res.json({url,expires_in:300});
+ res.setHeader('Cache-Control','no-store, max-age=0');return res.json({url,expires_in:300});
 }
 
 async function overview(u){
