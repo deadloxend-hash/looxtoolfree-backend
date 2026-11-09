@@ -66,7 +66,7 @@ export default handler(async(req,res)=>{
   method(req,'GET');
   let plans=[],operations=[],localWorker=null;
   if(authReady())[plans,operations,localWorker]=await Promise.all([rows('plans',{select:'id,price_cents,credits,cadence'}),rows('operations',{select:'id,cost'}),rows('local_worker_health',{id:'eq.1',select:'modes,last_seen'}).then(x=>x[0]).catch(()=>null)]);
-  return res.json({auth:authReady(),ai:aiReady(),billing:billingReady(),r2Media:{configured:r2Ready(),imagesOnly:true},testBilling:env.LEMON_MODE==='test',plans,operations,local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000),referenceAvailable:Boolean(aiReady()&&localWorker?.modes?.includes('generate_reference')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations).map(m=>m.id==='z_image_turbo'?{...m,available:Boolean(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000)?'available':m.status}:m),videoModels:videoCatalog(operations),faceSwap:{available:Boolean(env.LOOX_FACE_SWAP_LICENSED==='true'&&aiReady()&&localWorker?.modes?.includes('face_swap')&&Date.now()-Date.parse(localWorker.last_seen)<90000),cost:operations.find(o=>o.id==='face_swap')?.cost??6},
+  return res.json({auth:authReady(),ai:aiReady(),billing:billingReady(),r2Media:{configured:r2Ready(),imagesOnly:true},testBilling:env.LEMON_MODE==='test',plans,operations,local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000),referenceAvailable:Boolean(aiReady()&&localWorker?.modes?.includes('generate_reference')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations).map(m=>m.id==='z_image_turbo'?{...m,available:Boolean(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000)?'available':m.status}:m).concat([{id:'flux2_klein_local_edit',name:'FLUX.2 Klein 4B · Image Edit',provider:'LOOX Studio',description:'Reference image editing on your private GPU',cost:operations.find(o=>o.id==='generate_flux2_klein_edit')?.cost??3,operation:'generate_flux2_klein_edit',available:Boolean(aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000?'available':'temporarily_unavailable',reason:'Select a reference image and enter an editing prompt. Requires the updated Windows GPU worker.'}]),videoModels:videoCatalog(operations),faceSwap:{available:Boolean(env.LOOX_FACE_SWAP_LICENSED==='true'&&aiReady()&&localWorker?.modes?.includes('face_swap')&&Date.now()-Date.parse(localWorker.last_seen)<90000),cost:operations.find(o=>o.id==='face_swap')?.cost??6},
    ...(authReady()?{url:env.SUPABASE_URL,key:env.SUPABASE_PUBLISHABLE_KEY}:{})});
  }
  if(action==='public_media'){method(req,'GET');return publicMedia(req,res);}
@@ -97,7 +97,7 @@ export default handler(async(req,res)=>{
   const offset=Number(req.query.offset||0);
   need(Number.isInteger(offset)&&offset>=0&&offset<=240,400,'Invalid history page.');
   const operation=req.query.operation==='generate_video'?'generate_video':'generate';
-  const jobs=await rows('jobs',{user_id:'eq.'+u.id,operation:operation==='generate'?'in.('+['generate','generate_z_image',...cloudOperations].join(',')+')':'in.('+['generate_video',...cloudVideoOperations].join(',')+')',state:'eq.succeeded',result_path:'not.is.null',
+  const jobs=await rows('jobs',{user_id:'eq.'+u.id,operation:operation==='generate'?'in.('+['generate','generate_z_image','generate_flux2_klein_edit',...cloudOperations].join(',')+')':'in.('+['generate_video',...cloudVideoOperations].join(',')+')',state:'eq.succeeded',result_path:'not.is.null',
    select:'id,prompt,operation,created_at,result_path,storage_provider,object_key,thumbnail_key,media_type',order:'created_at.desc',limit:'12',offset:String(offset)});
   const items=await Promise.all(jobs.map(async j=>{
    let url=null;
@@ -122,7 +122,7 @@ export default handler(async(req,res)=>{
  if(action==='delete_image'){
   await limit(u,'delete_image',20,600);
   need(typeof b.id==='string'&&/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(b.id),400,'Invalid image ID.');
-  const [job]=await rows('jobs',{id:'eq.'+b.id,user_id:'eq.'+u.id,operation:'in.('+['generate','generate_z_image',...cloudOperations].join(',')+')',
+  const [job]=await rows('jobs',{id:'eq.'+b.id,user_id:'eq.'+u.id,operation:'in.('+['generate','generate_z_image','generate_flux2_klein_edit',...cloudOperations].join(',')+')',
    state:'eq.succeeded',select:'id,result_path,storage_provider,object_key,thumbnail_key'});
   need(job,404,'Image not found.');
   if(job.result_path||job.object_key){
