@@ -98,8 +98,10 @@ async function followSave(db,me,p){
  if(id===me.id)bad(400,'Cannot follow yourself.');
  const target=await stmt(db,'SELECT is_private FROM profiles WHERE user_id=?',id).first();
  if(!target||target.is_private)bad(404,'Creator is not available to follow.');
- if(p.follow===true)await stmt(db,'INSERT OR IGNORE INTO follows(follower_id,creator_id,created_at) VALUES(?,?,?)',me.id,id,now()).run();
- else await stmt(db,'DELETE FROM follows WHERE follower_id=? AND creator_id=?',me.id,id).run();
+ if(p.follow===true){
+  const change=await stmt(db,'INSERT OR IGNORE INTO follows(follower_id,creator_id,created_at) VALUES(?,?,?)',me.id,id,now()).run();
+  if(change.meta?.changes)await stmt(db,'INSERT INTO notifications(id,user_id,actor_id,kind,is_read,created_at) VALUES(?,?,?,?,0,?)',crypto.randomUUID(),id,me.id,'follow',now()).run();
+ }else await stmt(db,'DELETE FROM follows WHERE follower_id=? AND creator_id=?',me.id,id).run();
  return summary(db,id,me);
 }
 async function connections(db,url,me){
@@ -177,8 +179,10 @@ async function react(db,me,p,kind){
  if(!post||post.is_private&&post.creator_id!==me.id)bad(404,'Post unavailable.');
  if(kind==='like'){
   if(post.creator_id===me.id)bad(400,'Cannot like your own creation.');
-  if(p.on===true)await stmt(db,'INSERT OR IGNORE INTO post_likes(post_id,user_id,created_at) VALUES(?,?,?)',id,me.id,now()).run();
-  else await stmt(db,'DELETE FROM post_likes WHERE post_id=? AND user_id=?',id,me.id).run();
+  if(p.on===true){
+   const change=await stmt(db,'INSERT OR IGNORE INTO post_likes(post_id,user_id,created_at) VALUES(?,?,?)',id,me.id,now()).run();
+   if(change.meta?.changes)await stmt(db,'INSERT INTO notifications(id,user_id,actor_id,post_id,kind,is_read,created_at) VALUES(?,?,?,?,?,0,?)',crypto.randomUUID(),post.creator_id,me.id,id,'like',now()).run();
+  }else await stmt(db,'DELETE FROM post_likes WHERE post_id=? AND user_id=?',id,me.id).run();
  }else{
   if(p.on===true)await stmt(db,'INSERT OR IGNORE INTO saved_posts(user_id,post_id,created_at) VALUES(?,?,?)',me.id,id,now()).run();
   else await stmt(db,'DELETE FROM saved_posts WHERE user_id=? AND post_id=?',me.id,id).run();
