@@ -439,16 +439,50 @@ async function markNotifications(db,me,data){
  else await stmt(db,'UPDATE notifications SET is_read=1 WHERE id=? AND user_id=?',needId(data.id),me.id).run();
  return {saved:true};
 }
-async function readMedia(db,r2,url,me){
+async function readMedia(db,r2,url,me,request){
  const id=needId(url.searchParams.get('id')),type=url.searchParams.get('type');
- if(type!=='avatar'&&type!=='cover')bad(400,'Invalid profile media.');
- const p=await stmt(db,'SELECT is_private,avatar_key,cover_key FROM profiles WHERE user_id=?',id).first();
- if(!p||p.is_private&&me?.id!==id)bad(404,'Profile unavailable.');
- const key=type==='avatar'?p.avatar_key:p.cover_key;
- if(!key||!key.startsWith('public/avatars/'+id+'/'))bad(404,'Photo unavailable.');
- const object=await r2.get(key);
- if(!object)bad(404,'Photo unavailable.');
- return new Response(object.body,{headers:{'Content-Type':object.httpMetadata?.contentType||'image/webp','Cache-Control':p.is_private?'private,no-store':'public,max-age=300','Content-Disposition':'inline'}});
+ let key=null,privateResult=false,mediaType='image/webp';
+ if(type==='post'){
+  const post=await stmt(db,"SELECT p.id,p.creator_id,p.media_type,p.media_key,p.thumbnail_key,p.status,p.visible,c.is_private FROM posts p JOIN profiles c ON c.user_id=p.creator_id WHERE p.id=?",id).first();
+  if(!post)bad(404,'Post media unavailable.');
+  const owner=me?.id===post.creator_id,admin=me?.data?.app_metadata?.loox_template_admin===true;
+  if(!owner&&!admin&&(post.status!=='approved'||!post.visible||post.is_private))bad(404,'Post media unavailable.');
+  key=url.searchParams.get('variant')==='original'?post.media_key:post.thumbnail_key||post.media_key;
+  if(!key||!key.startsWith('users/'+post.creator_id+'/generations/')&&!key.startsWith('users/'+post.creator_id+'/thumbnails/'))bad(404,'Post media unavailable.');
+  privateResult=!!post.is_private||post.status!=='approved'||!post.visible;
+  mediaType=post.media_type==='video'&&key===post.media_key?'video/mp4':'image/webp';
+ }else if(type==='avatar'||type==='cover'){
+  const p=await stmt(db,'SELECT user_id,is_private,avatar_key,cover_key FROM profiles WHERE user_id=?',id).first();
+  if(!p||p.is_private&&me?.id!==id)bad(404,'Profile unavailable.');
+  key=type==='avatar'?p.avatar_key:p.cover_key;
+  if(!key||!key.startsWith('public/avatars/'+id+'/'))bad(404,'Photo unavailable.');
+  privateResult=!!p.is_private;
+ }else bad(400,'Invalid media type.');
+ let range=null;
+ const header=request.headers.get('Range');
+ if(mediaType==='video/mp4'&&header){
+  const match=/^bytes=(\d+)-(\d*)$/.exec(header);
+  if(match){
+   const begin=Number(match[1]),end=match[2]?Number(match[2]):null;
+   if(Number.isSafeInteger(begin)&&begin>=0&&(end===null||Number.isSafeInteger(end)&&end>=begin)){
+    range={offset:begin};
+    if(end!==null)range.length=Math.min(end-begin+1,20_000_000);
+   }
+  }
+ }
+ const object=await r2.get(key,range?{range}:undefined);
+ if(!object)bad(404,'Media unavailable.');
+ const headers=new Headers({
+  'Content-Type':object.httpMetadata?.contentType||mediaType,
+  'Cache-Control':privateResult?'private, no-store':'public, max-age=300',
+  'Content-Disposition':'inline','Accept-Ranges':'bytes'
+ });
+ if(object.size)headers.set('Content-Length',String(object.body?.length??(range?object.range?.length||object.size:object.size)));
+ if(range&&object.range){
+  headers.set('Content-Range','bytes '+object.range.offset+'-'+(object.range.offset+object.range.length-1)+'/'+object.size);
+  headers.set('Content-Length',String(object.range.length));
+ }
+ return new Response(object.body,{status:range&&object.range?206:200,headers});
 }
 function imageType(bytes,type){
  if(type==='image/png')return bytes.length>8&&[137,80,78,71,13,10,26,10].every((v,i)=>v===bytes[i]);
@@ -525,7 +559,7 @@ export default {
    else if(path==='save'&&request.method==='POST')response=send(await react(env.DB,me,await request.json(),'save'));
    else if(path==='notifications'&&request.method==='GET')response=send(await notifications(env.DB,url,me));
    else if(path==='notifications'&&request.method==='PATCH')response=send(await markNotifications(env.DB,me,await request.json()));
-   else if(path==='media'&&request.method==='GET')response=await readMedia(env.DB,env.MEDIA,url,me);
+   else if(path==='media'&&request.method==='GET')response=await readMedia(env.DB,env.MEDIA,url,me,request);
    else if(['avatar','cover'].includes(path)&&request.method==='POST')response=send(await upload(env.DB,env.MEDIA,request,me,path),201);
    else if(['avatar','cover'].includes(path)&&request.method==='DELETE')response=send(await removeMedia(env.DB,me,path));
    else response=send({error:'Unknown creator API action.'},404);
