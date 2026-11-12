@@ -237,6 +237,61 @@ async function notifications(db,url,me){
  const rows=await stmt(db,'SELECT n.*,p.username,p.display_name,p.avatar_path FROM notifications n LEFT JOIN profiles p ON p.user_id=n.actor_id WHERE n.user_id=? ORDER BY n.created_at DESC LIMIT 26 OFFSET ?',me.id,offset).all();
  return {items:rows.results.slice(0,25),has_more:rows.results.length>25};
 }
+async function commentPermission(db,id,me){
+ const post=await stmt(db,'SELECT p.id,p.creator_id,p.comments_enabled,c.is_private FROM posts p JOIN profiles c ON c.user_id=p.creator_id WHERE p.id=? AND p.status=? AND p.visible=1',id,'approved').first();
+ if(!post||post.is_private&&me?.id!==post.creator_id)bad(404,'Post unavailable.');
+ return post;
+}
+async function commentsList(db,url,me){
+ const id=needId(url.searchParams.get('post_id'));
+ await commentPermission(db,id,me);
+ const offset=Math.min(10000,Math.max(0,Number(url.searchParams.get('offset'))||0)),kind=url.searchParams.get('kind')||'parents';
+ if(kind==='parents'){
+  const rows=await stmt(db,'SELECT id,post_id,parent_id,user_id,body,created_at FROM comments WHERE post_id=? AND parent_id IS NULL ORDER BY created_at ASC,id ASC LIMIT 15 OFFSET ?',id,offset).all();
+  return {items:rows.results,has_more:rows.results.length===15};
+ }
+ if(kind==='replies'){
+  const ids=[...new Set(String(url.searchParams.get('parent_ids')||'').split(',').filter(validId))].slice(0,25);
+  if(!ids.length)return {items:[],has_more:false};
+  const placeholders=ids.map(()=>'?').join(',');
+  const rows=await stmt(db,'SELECT id,post_id,parent_id,user_id,body,created_at FROM comments WHERE post_id=? AND parent_id IN ('+placeholders+') ORDER BY created_at ASC,id ASC LIMIT 201 OFFSET ?',id,...ids,offset).all();
+  return {items:rows.results.slice(0,200),has_more:rows.results.length>200};
+ }
+ bad(400,'Invalid comment filter.');
+}
+async function commentCreate(db,me,data){
+ await ensureSelf(db,me);
+ const postId=needId(data.post_id),post=await commentPermission(db,postId,me);
+ if(post.comments_enabled===0)bad(403,'Comments are disabled.');
+ const body=String(data.body||'').trim();
+ if(!body||body.length>1200)bad(400,'Comment must be between 1 and 1,200 characters.');
+ const recent=await stmt(db,'SELECT COUNT(*) n FROM comments WHERE user_id=? AND created_at>=?',me.id,new Date(Date.now()-60000).toISOString()).first();
+ if(Number(recent.n)>=8)bad(429,'Too many comments. Try again soon.');
+ let parent=null,recipient=post.creator_id;
+ if(data.parent_id){
+  const id=needId(data.parent_id);
+  parent=await stmt(db,'SELECT id,user_id FROM comments WHERE id=? AND post_id=?',id,postId).first();
+  if(!parent)bad(404,'Parent comment unavailable.');
+  recipient=parent.user_id;
+ }
+ const id=crypto.randomUUID(),created=now();
+ await stmt(db,'INSERT INTO comments(id,post_id,user_id,body,created_at,parent_id) VALUES(?,?,?,?,?,?)',id,postId,me.id,body,created,parent?.id||null).run();
+ if(recipient!==me.id){
+  const pref=await stmt(db,'SELECT notifications_enabled FROM profiles WHERE user_id=?',recipient).first();
+  if(pref?.notifications_enabled){
+   await stmt(db,'INSERT INTO notifications(id,user_id,actor_id,post_id,comment_id,kind,is_read,created_at) VALUES(?,?,?,?,?,?,0,?)',
+    crypto.randomUUID(),recipient,me.id,postId,id,parent?'reply':'comment',created).run();
+  }
+ }
+ return {id,post_id:postId,user_id:me.id,body,created_at:created,parent_id:parent?.id||null};
+}
+async function commentDelete(db,url,me){
+ const id=needId(url.searchParams.get('id'));
+ const row=await stmt(db,'SELECT cm.*,p.creator_id FROM comments cm JOIN posts p ON p.id=cm.post_id WHERE cm.id=?',id).first();
+ if(!row||row.user_id!==me.id&&row.creator_id!==me.id)bad(403,'You cannot delete this comment.');
+ await stmt(db,'DELETE FROM comments WHERE id=?',id).run();
+ return {deleted:true};
+}
 async function readMedia(db,r2,url,me){
  const id=needId(url.searchParams.get('id')),type=url.searchParams.get('type');
  if(type!=='avatar'&&type!=='cover')bad(400,'Invalid profile media.');
@@ -294,7 +349,7 @@ export default {
    }
    if(request.headers.has('Origin')&&request.headers.get('Origin')!==ORIGIN)bad(403,'Origin is not allowed.');
    if(path==='health'&&request.method==='GET')return cors(request,send({ok:true,storage:'cloudflare-d1-r2',version:1}));
-   const anonymous=['profile','connections','profiles','feed','replies','media','discover','post'].includes(path)&&request.method==='GET';
+   const anonymous=['profile','connections','profiles','feed','replies','media','discover','post','comments'].includes(path)&&request.method==='GET';
    const me=await user(request,env,!anonymous);
    let response;
    if(path==='profile'&&request.method==='GET')response=send(await profileGet(env.DB,url,me));
@@ -307,6 +362,9 @@ export default {
    else if(path==='feed'&&request.method==='GET')response=send(await feed(env.DB,url,me));
    else if(path==='discover'&&request.method==='GET')response=send(await discover(env.DB,url,me));
    else if(path==='post'&&request.method==='GET')response=send(await publicPost(env.DB,url,me));
+   else if(path==='comments'&&request.method==='GET')response=send(await commentsList(env.DB,url,me));
+   else if(path==='comments'&&request.method==='POST')response=send(await commentCreate(env.DB,me,await request.json()),201);
+   else if(path==='comments'&&request.method==='DELETE')response=send(await commentDelete(env.DB,url,me));
    else if(path==='replies'&&request.method==='GET')response=send(await replies(env.DB,url,me));
    else if(path==='like'&&request.method==='POST')response=send(await react(env.DB,me,await request.json(),'like'));
    else if(path==='save'&&request.method==='POST')response=send(await react(env.DB,me,await request.json(),'save'));
