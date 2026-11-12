@@ -28,7 +28,7 @@ export default handler(async(req,res)=>{
  if(finished.length){
   const prefixes=finished.flatMap(j=>['image','mask','target_image','swap_image','reference_image'].map(f=>j.user_id+'/'+j.id+'-'+f+'.png'));
   await supa('/storage/v1/object/loox-results',{method:'DELETE',body:JSON.stringify({prefixes})});
-  const inputKeys=finished.flatMap(j=>['target_image','swap_image','reference_image','video-source'].map(f=>userKey(j.user_id,'inputs',j.id,'image/png','-'+f)));
+  const inputKeys=finished.flatMap(j=>['target_image','swap_image','reference_image','video-source','video-end'].map(f=>userKey(j.user_id,'inputs',j.id,'image/png','-'+f)));
   for(let i=0;i<inputKeys.length;i+=10)await Promise.allSettled(inputKeys.slice(i,i+10).map(deleteR2Object));
   await supa('/rest/v1/loox_jobs?id=in.('+finished.map(j=>j.id).join(',')+')',{method:'PATCH',body:JSON.stringify({inputs_clean:true})});
  }

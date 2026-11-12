@@ -1,3 +1,5 @@
+import {workspaceAssetAction} from '../lib/workspace-assets.js';
+import {enhancePrompt} from '../lib/prompt-enhancer.js';
 import {communityAction} from '../lib/community-admin.js';
 import {env,authenticate,account,aiReady,authReady,billingReady,handler,method,limit,need,rows,rpc,supa,json} from '../lib/core.js';
 import {start,status} from '../lib/jobs.js';
@@ -5,7 +7,7 @@ import {imageCatalog,cloudJob,cloudOperations} from '../lib/image-cloud.js';
 import {videoCatalog,videoQuote,cloudVideoJob,cloudVideoStatus,cloudVideoOperations} from '../lib/video-cloud.js';
 import {checkout,portal} from '../lib/billing.js';
 import {templateAction} from '../lib/templates.js';
-import {r2Ready} from '../lib/r2.js';
+import {r2Ready,deleteR2Object} from '../lib/r2.js';
 import {r2MediaAction} from '../lib/r2-media.js';
 import {chatAttachmentAction} from '../lib/chat-attachments.js';
 import {mediaURL,removeJobMedia} from '../lib/media-store.js';
@@ -46,6 +48,9 @@ async function removeAccount(u,password){
  const verified=await fetch(env.SUPABASE_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json'},body:JSON.stringify({email:u.email,password}),signal:AbortSignal.timeout(12000)});
  need(verified.ok&&(await verified.json()).user?.id===u.id,403,'Password verification failed.');
  await rpc('begin_delete',{p_user:u.id});
+ const assets=await rows('user_assets',{user_id:'eq.'+u.id,select:'id,object_key,thumbnail_key',limit:'100'});
+ for(const asset of assets){for(const key of [asset.object_key,asset.thumbnail_key])if(key.startsWith('users/'+u.id+'/'))await deleteR2Object(key);}
+
  // Paginate by deleting each batch before listing the next batch. Retrying resumes cleanup.
  for(let page=0;page<20;page++){
   const files=await supa('/storage/v1/object/list/loox-results',{method:'POST',body:JSON.stringify({prefix:u.id+'/',limit:100})});
@@ -58,6 +63,7 @@ async function removeAccount(u,password){
 }
 export default handler(async(req,res)=>{
  const action=req.query.action;
+ if(typeof action==='string'&&action.startsWith('asset_'))return workspaceAssetAction(req,res,action.slice(6));
  if(typeof action==='string'&&action.startsWith('community_'))return communityAction(req,res,action.slice(10));
  if(action==='r2_media')return r2MediaAction(req,res);
  if(typeof action==='string'&&action.startsWith('chat_attachment_'))return chatAttachmentAction(req,res,action.slice('chat_attachment_'.length));
@@ -66,13 +72,14 @@ export default handler(async(req,res)=>{
   method(req,'GET');
   let plans=[],operations=[],localWorker=null;
   if(authReady())[plans,operations,localWorker]=await Promise.all([rows('plans',{select:'id,price_cents,credits,cadence'}),rows('operations',{select:'id,cost'}),rows('local_worker_health',{id:'eq.1',select:'modes,last_seen'}).then(x=>x[0]).catch(()=>null)]);
-  return res.json({auth:authReady(),ai:aiReady(),billing:billingReady(),r2Media:{configured:r2Ready(),imagesOnly:true},testBilling:env.LEMON_MODE==='test',plans,operations,local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000),referenceAvailable:Boolean(aiReady()&&localWorker?.modes?.includes('generate_reference')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations).map(m=>m.id==='z_image_turbo'?{...m,available:Boolean(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000)?'available':m.status}:m).concat([{id:'flux2_klein_local_edit',name:'FLUX.2 Klein 4B · Image Edit',provider:'LOOX Studio',description:'Reference image editing on your private GPU',cost:operations.find(o=>o.id==='generate_flux2_klein_edit')?.cost??3,operation:'generate_flux2_klein_edit',available:Boolean(aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000?'available':'temporarily_unavailable',reason:'Select a reference image and enter an editing prompt. Requires the updated Windows GPU worker.'}]),videoModels:videoCatalog(operations),faceSwap:{available:Boolean(env.LOOX_FACE_SWAP_LICENSED==='true'&&aiReady()&&localWorker?.modes?.includes('face_swap')&&Date.now()-Date.parse(localWorker.last_seen)<90000),cost:operations.find(o=>o.id==='face_swap')?.cost??6},
+  return res.json({workspace:{assets:r2Ready(),promptEnhancer:Boolean(env.GEMINI_API_KEY)},auth:authReady(),ai:aiReady(),billing:billingReady(),r2Media:{configured:r2Ready(),imagesOnly:true},testBilling:env.LEMON_MODE==='test',plans,operations,local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000),referenceAvailable:Boolean(aiReady()&&localWorker?.modes?.includes('generate_reference')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations).map(m=>m.id==='z_image_turbo'?{...m,available:Boolean(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000)?'available':m.status}:m).concat([{id:'flux2_klein_local_edit',name:'FLUX.2 Klein 4B · Image Edit',provider:'LOOX Studio',description:'Reference image editing on your private GPU',cost:operations.find(o=>o.id==='generate_flux2_klein_edit')?.cost??3,operation:'generate_flux2_klein_edit',available:Boolean(aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000?'available':'temporarily_unavailable',reason:'Select a reference image and enter an editing prompt. Requires the updated Windows GPU worker.'}]),videoModels:videoCatalog(operations),faceSwap:{available:Boolean(env.LOOX_FACE_SWAP_LICENSED==='true'&&aiReady()&&localWorker?.modes?.includes('face_swap')&&Date.now()-Date.parse(localWorker.last_seen)<90000),cost:operations.find(o=>o.id==='face_swap')?.cost??6},
    ...(authReady()?{url:env.SUPABASE_URL,key:env.SUPABASE_PUBLISHABLE_KEY}:{})});
  }
  if(action==='public_media'){method(req,'GET');return publicMedia(req,res);}
  const u=await authenticate(req);
  await limit(u,'api',100);
  await account(u);
+ if(action==='enhance_prompt'){method(req,'POST');return res.json(await enhancePrompt(u,json(req)));}
  if(action==='account'){method(req,'GET');return res.json(await overview(u));}
  if(action==='gpu'){
   method(req,'GET');
@@ -97,7 +104,8 @@ export default handler(async(req,res)=>{
   const offset=Number(req.query.offset||0);
   need(Number.isInteger(offset)&&offset>=0&&offset<=240,400,'Invalid history page.');
   const operation=req.query.operation==='generate_video'?'generate_video':'generate';
-  const jobs=await rows('jobs',{user_id:'eq.'+u.id,operation:operation==='generate'?'in.('+['generate','generate_z_image','generate_flux2_klein_edit',...cloudOperations].join(',')+')':'in.('+['generate_video',...cloudVideoOperations].join(',')+')',state:'eq.succeeded',result_path:'not.is.null',
+  const query=String(req.query.q||'').trim().slice(0,100).replace(/[\\%_*]/g,'');
+  const jobs=await rows('jobs',{...(query?{prompt:'ilike.*'+query+'*'}:{}),user_id:'eq.'+u.id,operation:operation==='generate'?'in.('+['generate','generate_z_image','generate_flux2_klein_edit',...cloudOperations].join(',')+')':'in.('+['generate_video',...cloudVideoOperations].join(',')+')',state:'eq.succeeded',result_path:'not.is.null',
    select:'id,prompt,operation,created_at,result_path,storage_provider,object_key,thumbnail_key,media_type',order:'created_at.desc',limit:'12',offset:String(offset)});
   const items=await Promise.all(jobs.map(async j=>{
    let url=null;
