@@ -237,6 +237,55 @@ async function notifications(db,url,me){
  const rows=await stmt(db,'SELECT n.*,p.username,p.display_name,p.avatar_path,post.caption post_caption,post.media_path post_media_path,post.media_type post_media_type,cm.body comment_body FROM notifications n LEFT JOIN profiles p ON p.user_id=n.actor_id LEFT JOIN posts post ON post.id=n.post_id LEFT JOIN comments cm ON cm.id=n.comment_id WHERE n.user_id=? ORDER BY n.created_at DESC LIMIT 26 OFFSET ?',me.id,offset).all();
  return {items:rows.results.slice(0,25),has_more:rows.results.length>25};
 }
+async function collectionList(db,url,me){
+ const id=url.searchParams.get('id'),userId=url.searchParams.get('user_id');
+ if(id){
+  needId(id);
+  const row=await stmt(db,'SELECT c.* FROM collections c JOIN profiles p ON p.user_id=c.user_id WHERE c.id=? AND (c.user_id=? OR (c.is_public=1 AND p.is_private=0))',id,me?.id||'').first();
+  if(!row)bad(404,'Collection unavailable.');
+  return {items:[row],has_more:false};
+ }
+ const owner=userId?needId(userId):me?.id;
+ if(!owner)bad(401,'Sign in to view collections.');
+ const rows=await stmt(db,'SELECT c.* FROM collections c JOIN profiles p ON p.user_id=c.user_id WHERE c.user_id=? AND (c.user_id=? OR (c.is_public=1 AND p.is_private=0)) ORDER BY c.created_at DESC LIMIT 100',owner,me?.id||'').all();
+ return {items:rows.results,has_more:false};
+}
+async function collectionSave(db,me,data,method){
+ await ensureSelf(db,me);
+ if(method==='POST'){
+  const name=String(data.name||'').trim();
+  if(!name||name.length>80)bad(400,'Collection name must be 1–80 characters.');
+  const count=await stmt(db,'SELECT COUNT(*) n FROM collections WHERE user_id=?',me.id).first();
+  if(Number(count.n)>=100)bad(429,'You have reached your collection limit.');
+  const id=crypto.randomUUID();
+  await stmt(db,'INSERT INTO collections(id,user_id,name,is_public,created_at) VALUES(?,?,?,?,?)',id,me.id,name,data.is_public===true?1:0,now()).run();
+  return {id,name,is_public:data.is_public===true};
+ }
+ const id=needId(data.id);
+ const own=await stmt(db,'SELECT * FROM collections WHERE id=? AND user_id=?',id,me.id).first();
+ if(!own)bad(404,'Collection unavailable.');
+ if(method==='DELETE'){
+  await stmt(db,'DELETE FROM collection_items WHERE collection_id=?',id).run();
+  await stmt(db,'DELETE FROM collections WHERE id=? AND user_id=?',id,me.id).run();
+  return {deleted:true};
+ }
+ const name=data.name===undefined?own.name:String(data.name||'').trim();
+ if(!name||name.length>80)bad(400,'Collection name must be 1–80 characters.');
+ await stmt(db,'UPDATE collections SET name=?,is_public=? WHERE id=? AND user_id=?',name,data.is_public===undefined?own.is_public:data.is_public===true?1:0,id,me.id).run();
+ return {id,name};
+}
+async function collectionItem(db,me,data,method){
+ await ensureSelf(db,me);
+ const id=needId(data.collection_id),postId=needId(data.post_id);
+ const collection=await stmt(db,'SELECT id FROM collections WHERE id=? AND user_id=?',id,me.id).first();
+ if(!collection)bad(404,'Collection unavailable.');
+ if(method==='POST'){
+  const post=await stmt(db,"SELECT p.id FROM posts p JOIN profiles c ON c.user_id=p.creator_id WHERE p.id=? AND p.status='approved' AND p.visible=1 AND (c.is_private=0 OR c.user_id=?)",postId,me.id).first();
+  if(!post)bad(404,'Post unavailable.');
+  await stmt(db,'INSERT OR IGNORE INTO collection_items(collection_id,post_id,position,created_at) VALUES(?,?,?,?)',id,postId,0,now()).run();
+ }else await stmt(db,'DELETE FROM collection_items WHERE collection_id=? AND post_id=?',id,postId).run();
+ return {saved:true};
+}
 async function commentPermission(db,id,me){
  const post=await stmt(db,'SELECT p.id,p.creator_id,p.comments_enabled,c.is_private FROM posts p JOIN profiles c ON c.user_id=p.creator_id WHERE p.id=? AND p.status=? AND p.visible=1',id,'approved').first();
  if(!post||post.is_private&&me?.id!==post.creator_id)bad(404,'Post unavailable.');
@@ -354,7 +403,7 @@ export default {
    }
    if(request.headers.has('Origin')&&request.headers.get('Origin')!==ORIGIN)bad(403,'Origin is not allowed.');
    if(path==='health'&&request.method==='GET')return cors(request,send({ok:true,storage:'cloudflare-d1-r2',version:1}));
-   const anonymous=['profile','connections','profiles','feed','replies','media','discover','post','comments'].includes(path)&&request.method==='GET';
+   const anonymous=['profile','connections','profiles','feed','replies','media','discover','post','comments','collections'].includes(path)&&request.method==='GET';
    const me=await user(request,env,!anonymous);
    let response;
    if(path==='profile'&&request.method==='GET')response=send(await profileGet(env.DB,url,me));
@@ -367,6 +416,9 @@ export default {
    else if(path==='feed'&&request.method==='GET')response=send(await feed(env.DB,url,me));
    else if(path==='discover'&&request.method==='GET')response=send(await discover(env.DB,url,me));
    else if(path==='post'&&request.method==='GET')response=send(await publicPost(env.DB,url,me));
+   else if(path==='collections'&&request.method==='GET')response=send(await collectionList(env.DB,url,me));
+   else if(path==='collections'&&['POST','PATCH','DELETE'].includes(request.method))response=send(await collectionSave(env.DB,me,await request.json(),request.method));
+   else if(path==='collection-item'&&['POST','DELETE'].includes(request.method))response=send(await collectionItem(env.DB,me,await request.json(),request.method));
    else if(path==='comments'&&request.method==='GET')response=send(await commentsList(env.DB,url,me));
    else if(path==='comments'&&request.method==='POST')response=send(await commentCreate(env.DB,me,await request.json()),201);
    else if(path==='comments'&&request.method==='DELETE')response=send(await commentDelete(env.DB,url,me));
