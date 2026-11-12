@@ -178,6 +178,11 @@ async function react(db,me,p,kind){
  }
  return {post_id:id,on:p.on===true};
 }
+async function notifications(db,url,me){
+ const offset=Math.min(10000,Math.max(0,Number(url.searchParams.get('offset'))||0));
+ const rows=await stmt(db,'SELECT n.*,p.username,p.display_name,p.avatar_path FROM notifications n LEFT JOIN profiles p ON p.user_id=n.actor_id WHERE n.user_id=? ORDER BY n.created_at DESC LIMIT 26 OFFSET ?',me.id,offset).all();
+ return {items:rows.results.slice(0,25),has_more:rows.results.length>25};
+}
 async function readMedia(db,r2,url,me){
  const id=needId(url.searchParams.get('id')),type=url.searchParams.get('type');
  if(type!=='avatar'&&type!=='cover')bad(400,'Invalid profile media.');
@@ -248,6 +253,7 @@ export default {
    else if(path==='replies'&&request.method==='GET')response=send(await replies(env.DB,url,me));
    else if(path==='like'&&request.method==='POST')response=send(await react(env.DB,me,await request.json(),'like'));
    else if(path==='save'&&request.method==='POST')response=send(await react(env.DB,me,await request.json(),'save'));
+   else if(path==='notifications'&&request.method==='GET')response=send(await notifications(env.DB,url,me));
    else if(path==='media'&&request.method==='GET')response=await readMedia(env.DB,env.MEDIA,url,me);
    else if(['avatar','cover'].includes(path)&&request.method==='POST')response=send(await upload(env.DB,env.MEDIA,request,me,path),201);
    else if(['avatar','cover'].includes(path)&&request.method==='DELETE')response=send(await removeMedia(env.DB,me,path));
