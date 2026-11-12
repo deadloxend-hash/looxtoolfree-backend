@@ -286,6 +286,99 @@ async function collectionItem(db,me,data,method){
  }else await stmt(db,'DELETE FROM collection_items WHERE collection_id=? AND post_id=?',id,postId).run();
  return {saved:true};
 }
+
+async function jobForPublish(env,request,me,jobId){
+ const query=new URLSearchParams({id:'eq.'+jobId,user_id:'eq.'+me.id,state:'eq.succeeded',
+  select:'id,operation,prompt,result_path,storage_provider,object_key,thumbnail_key,media_type',limit:'1'});
+ const response=await fetch(env.SUPABASE_URL+'/rest/v1/loox_jobs?'+query,{
+  headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,Authorization:request.headers.get('Authorization'),Accept:'application/json'},
+  redirect:'error',signal:AbortSignal.timeout(12000)});
+ if(!response.ok)bad(503,'Could not verify the completed AI creation.');
+ const rows=await response.json();
+ return Array.isArray(rows)?rows[0]:null;
+}
+async function publish(db,env,request,me,data){
+ await ensureSelf(db,me);
+ const jobId=needId(data.job_id),caption=String(data.caption||'').trim();
+ if(!caption||caption.length>300)bad(400,'Enter a public caption of 1–300 characters.');
+ const prior=await stmt(db,'SELECT id FROM posts WHERE job_id=?',jobId).first();
+ if(prior)bad(409,'This creation has already been submitted.');
+ const quota=await stmt(db,'SELECT COUNT(*) n FROM posts WHERE creator_id=? AND created_at>=?',me.id,
+  new Date(Date.now()-86400000).toISOString()).first();
+ if(Number(quota.n)>=25)bad(429,'Daily Community submission limit reached.');
+ const job=await jobForPublish(env,request,me,jobId);
+ if(!job||!job.prompt||!job.result_path||!job.result_path.startsWith(me.id+'/'))bad(404,'Completed creation not found.');
+ if(!job.operation?.startsWith('generate')&&!job.operation?.startsWith('video_'))bad(400,'This AI operation cannot be shared.');
+ if(job.storage_provider!=='r2'||!job.object_key)bad(409,'Only verified Cloudflare R2 creations can be shared through this service.');
+ const key=String(job.object_key);
+ if(!key.startsWith('users/'+me.id+'/')||key.includes('..'))bad(400,'Invalid R2 media key.');
+ const id=crypto.randomUUID(),mediaType=job.media_type==='video'||job.operation.startsWith('video_')||job.operation.includes('video')?'video':'image';
+ try{await stmt(db,'INSERT INTO posts(id,creator_id,job_id,media_path,media_type,caption,shared_prompt,status,visible,created_at,comments_enabled,allow_remix,allow_download,model_id,view_count,media_provider,media_key,thumbnail_key) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+  id,me.id,jobId,job.result_path,mediaType,caption,data.share_prompt===true?job.prompt:null,'pending',0,now(),1,1,1,job.operation,0,'r2',key,job.thumbnail_key||null).run();}
+ catch(e){if(/unique|constraint/i.test(String(e)))bad(409,'This creation was already submitted.');throw e;}
+ return {id,status:'pending'};
+}
+async function reviewQueue(db,me){
+ if(me?.data?.app_metadata?.loox_template_admin!==true)bad(403,'Administrator access required.');
+ const rows=await stmt(db,"SELECT p.id,p.creator_id,p.caption,p.shared_prompt,p.media_type,p.media_key,p.thumbnail_key,p.created_at,c.username,c.display_name FROM posts p LEFT JOIN profiles c ON c.user_id=p.creator_id WHERE p.status='pending' ORDER BY p.created_at ASC LIMIT 100").all();
+ return {items:rows.results};
+}
+async function reviewPost(db,me,data){
+ if(me?.data?.app_metadata?.loox_template_admin!==true)bad(403,'Administrator access required.');
+ const id=needId(data.id),decision=String(data.status||'');
+ if(!['approved','rejected'].includes(decision))bad(400,'Invalid review decision.');
+ const existing=await stmt(db,"SELECT id,creator_id,media_key FROM posts WHERE id=? AND status='pending'",id).first();
+ if(!existing)bad(409,'Submission is no longer pending.');
+ const outcome=await stmt(db,"UPDATE posts SET status=?,visible=? WHERE id=? AND status='pending'",decision,decision==='approved'?1:0,id).run();
+ if(!outcome.meta?.changes)bad(409,'Submission already reviewed.');
+ await stmt(db,'INSERT INTO notifications(id,user_id,kind,post_id,is_read,created_at) VALUES(?,?,?,?,0,?)',
+  crypto.randomUUID(),existing.creator_id,decision,id,now()).run();
+ return {id,status:decision};
+}
+async function managePosts(db,me,url){
+ await ensureSelf(db,me);
+ const offset=Math.max(0,Math.min(10000,Number(url.searchParams.get('offset'))||0));
+ const rows=await stmt(db,"SELECT id,creator_id,job_id,media_type,caption,shared_prompt,status,visible,created_at,comments_enabled,allow_remix,allow_download FROM posts WHERE creator_id=? ORDER BY created_at DESC LIMIT 25 OFFSET ?",me.id,offset).all();
+ return {items:rows.results.slice(0,24),has_more:rows.results.length>24};
+}
+async function editPost(db,me,data){
+ await ensureSelf(db,me);
+ const id=needId(data.id),action=String(data.action||'');
+ if(!['edit','hide','show','delete','permissions'].includes(action))bad(400,'Unknown post action.');
+ const existing=await stmt(db,'SELECT * FROM posts WHERE id=? AND creator_id=?',id,me.id).first();
+ if(!existing)bad(404,'Post not found.');
+ if(action==='delete'){
+  await stmt(db,'DELETE FROM comments WHERE post_id=?',id).run();
+  await stmt(db,'DELETE FROM post_likes WHERE post_id=?',id).run();
+  await stmt(db,'DELETE FROM saved_posts WHERE post_id=?',id).run();
+  await stmt(db,'DELETE FROM collection_items WHERE post_id=?',id).run();
+  await stmt(db,'DELETE FROM notifications WHERE post_id=?',id).run();
+  await stmt(db,'UPDATE profiles SET pinned_post_id=NULL WHERE pinned_post_id=?',id).run();
+  await stmt(db,'DELETE FROM posts WHERE id=? AND creator_id=?',id,me.id).run();
+  return {deleted:true};
+ }
+ if(action==='edit'){
+  const caption=String(data.caption||'').trim();
+  if(!caption||caption.length>300)bad(400,'Caption must be 1–300 characters.');
+  let sharedPrompt=null;
+  if(data.share_prompt===true){
+   // Preserve the original prompt ONLY when it was previously approved for sharing.
+   // Do not trust arbitrary prompt text from an untrusted browser.
+   if(existing.shared_prompt)sharedPrompt=existing.shared_prompt;
+   else if(existing.job_id)bad(409,'Use the original AI job prompt from an authorized re-submission to share it.');
+  }
+  await stmt(db,"UPDATE posts SET caption=?,shared_prompt=?,status='pending',visible=0 WHERE id=? AND creator_id=?",caption,sharedPrompt,id,me.id).run();
+  return {saved:true,status:'pending'};
+ }
+ if(action==='show'||action==='hide'){
+  if(action==='show'&&existing.status!=='approved')bad(409,'Await administrator approval before showing this post.');
+  await stmt(db,'UPDATE posts SET visible=? WHERE id=? AND creator_id=?',action==='show'?1:0,id,me.id).run();
+  return {saved:true};
+ }
+ await stmt(db,'UPDATE posts SET comments_enabled=?,allow_remix=?,allow_download=? WHERE id=? AND creator_id=?',
+  data.comments!==false?1:0,data.remix!==false?1:0,data.download!==false?1:0,id,me.id).run();
+ return {saved:true};
+}
 async function commentPermission(db,id,me){
  const post=await stmt(db,'SELECT p.id,p.creator_id,p.comments_enabled,c.is_private FROM posts p JOIN profiles c ON c.user_id=p.creator_id WHERE p.id=? AND p.status=? AND p.visible=1',id,'approved').first();
  if(!post||post.is_private&&me?.id!==post.creator_id)bad(404,'Post unavailable.');
@@ -416,6 +509,11 @@ export default {
    else if(path==='feed'&&request.method==='GET')response=send(await feed(env.DB,url,me));
    else if(path==='discover'&&request.method==='GET')response=send(await discover(env.DB,url,me));
    else if(path==='post'&&request.method==='GET')response=send(await publicPost(env.DB,url,me));
+   else if(path==='publish'&&request.method==='POST')response=send(await publish(env.DB,env,request,me,await request.json()),201);
+   else if(path==='review-queue'&&request.method==='GET')response=send(await reviewQueue(env.DB,me));
+   else if(path==='review'&&request.method==='POST')response=send(await reviewPost(env.DB,me,await request.json()));
+   else if(path==='manage'&&request.method==='GET')response=send(await managePosts(env.DB,me,url));
+   else if(path==='manage'&&request.method==='POST')response=send(await editPost(env.DB,me,await request.json()));
    else if(path==='collections'&&request.method==='GET')response=send(await collectionList(env.DB,url,me));
    else if(path==='collections'&&['POST','PATCH','DELETE'].includes(request.method))response=send(await collectionSave(env.DB,me,await request.json(),request.method));
    else if(path==='collection-item'&&['POST','DELETE'].includes(request.method))response=send(await collectionItem(env.DB,me,await request.json(),request.method));
