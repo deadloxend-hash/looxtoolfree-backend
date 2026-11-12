@@ -25,3 +25,10 @@ jobs:
             'https://loox-profile-api.looxai-studio.workers.dev/v1/health' \
             | tee /tmp/loox-profile-health.json
           node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/loox-profile-health.json'));if(x.ok!==true||x.storage!=='cloudflare-d1-r2')process.exit(1)"
+      - name: Verify public D1 discovery without exposing post contents
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent --retry 3 \
+            'https://loox-profile-api.looxai-studio.workers.dev/v1/discover?kind=all&sort=latest&offset=0' \
+            -o /tmp/loox-discover.json
+          node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('/tmp/loox-discover.json'));if(!Array.isArray(d.items)||typeof d.has_more!=='boolean')process.exit(1);console.log('Cloudflare community discovery: shape valid')"
