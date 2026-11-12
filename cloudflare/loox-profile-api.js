@@ -234,7 +234,7 @@ async function react(db,me,p,kind){
 }
 async function notifications(db,url,me){
  const offset=Math.min(10000,Math.max(0,Number(url.searchParams.get('offset'))||0));
- const rows=await stmt(db,'SELECT n.*,p.username,p.display_name,p.avatar_path FROM notifications n LEFT JOIN profiles p ON p.user_id=n.actor_id WHERE n.user_id=? ORDER BY n.created_at DESC LIMIT 26 OFFSET ?',me.id,offset).all();
+ const rows=await stmt(db,'SELECT n.*,p.username,p.display_name,p.avatar_path,post.caption post_caption,post.media_path post_media_path,post.media_type post_media_type,cm.body comment_body FROM notifications n LEFT JOIN profiles p ON p.user_id=n.actor_id LEFT JOIN posts post ON post.id=n.post_id LEFT JOIN comments cm ON cm.id=n.comment_id WHERE n.user_id=? ORDER BY n.created_at DESC LIMIT 26 OFFSET ?',me.id,offset).all();
  return {items:rows.results.slice(0,25),has_more:rows.results.length>25};
 }
 async function commentPermission(db,id,me){
@@ -291,6 +291,11 @@ async function commentDelete(db,url,me){
  if(!row||row.user_id!==me.id&&row.creator_id!==me.id)bad(403,'You cannot delete this comment.');
  await stmt(db,'DELETE FROM comments WHERE id=?',id).run();
  return {deleted:true};
+}
+async function markNotifications(db,me,data){
+ if(data.all===true)await stmt(db,'UPDATE notifications SET is_read=1 WHERE user_id=?',me.id).run();
+ else await stmt(db,'UPDATE notifications SET is_read=1 WHERE id=? AND user_id=?',needId(data.id),me.id).run();
+ return {saved:true};
 }
 async function readMedia(db,r2,url,me){
  const id=needId(url.searchParams.get('id')),type=url.searchParams.get('type');
@@ -369,6 +374,7 @@ export default {
    else if(path==='like'&&request.method==='POST')response=send(await react(env.DB,me,await request.json(),'like'));
    else if(path==='save'&&request.method==='POST')response=send(await react(env.DB,me,await request.json(),'save'));
    else if(path==='notifications'&&request.method==='GET')response=send(await notifications(env.DB,url,me));
+   else if(path==='notifications'&&request.method==='PATCH')response=send(await markNotifications(env.DB,me,await request.json()));
    else if(path==='media'&&request.method==='GET')response=await readMedia(env.DB,env.MEDIA,url,me);
    else if(['avatar','cover'].includes(path)&&request.method==='POST')response=send(await upload(env.DB,env.MEDIA,request,me,path),201);
    else if(['avatar','cover'].includes(path)&&request.method==='DELETE')response=send(await removeMedia(env.DB,me,path));
