@@ -163,6 +163,49 @@ async function feed(db,url,me){
  const rows=await stmt(db,sql,...args).all();
  return {items:rows.results.slice(0,limit).map(p=>({...p,visible:!!p.visible,liked:!!p.liked,saved:!!p.saved})),has_more:rows.results.length>limit};
 }
+async function discover(db,url,me){
+ const kind=url.searchParams.get('kind')||'all',sort=url.searchParams.get('sort')||'latest';
+ const creator=url.searchParams.get('creator'),term=(url.searchParams.get('query')||'').trim().slice(0,100);
+ const collection=url.searchParams.get('collection');
+ const days=Math.max(1,Math.min(30,Number(url.searchParams.get('days'))||30));
+ const offset=Math.min(10000,Math.max(0,Number(url.searchParams.get('offset'))||0));
+ if(!['all','image','video'].includes(kind)||!['latest','following','trending','popular','saved','liked'].includes(sort))bad(400,'Invalid discovery filter.');
+ if(creator)needId(creator);
+ if(collection)needId(collection);
+ if(['saved','liked','following'].includes(sort)&&!me)bad(401,'Sign in to view this feed.');
+ const args=[me?.id||'',me?.id||''];
+ const conditions=["p.status='approved'","p.visible=1","(c.is_private=0 OR c.user_id=?)"];
+ args.push(me?.id||'');
+ if(kind!=='all'){conditions.push('p.media_type=?');args.push(kind);}
+ if(creator){conditions.push('p.creator_id=?');args.push(creator);}
+ if(term){conditions.push("(lower(p.caption||' '||c.username||' '||c.display_name||' '||coalesce(p.model_id,'')) LIKE ?)");args.push('%'+term.toLowerCase()+'%');}
+ if(sort==='following'){conditions.push('EXISTS(SELECT 1 FROM follows f WHERE f.creator_id=p.creator_id AND f.follower_id=?)');args.push(me.id);}
+ if(sort==='saved'){conditions.push('EXISTS(SELECT 1 FROM saved_posts sv WHERE sv.post_id=p.id AND sv.user_id=?)');args.push(me.id);}
+ if(sort==='liked'){conditions.push('EXISTS(SELECT 1 FROM post_likes ll WHERE ll.post_id=p.id AND ll.user_id=?)');args.push(me.id);}
+ if(sort==='trending'){conditions.push("p.created_at>=datetime('now', ?)");args.push('-'+days+' days');}
+ if(collection){conditions.push("EXISTS(SELECT 1 FROM collection_items i JOIN collections cl ON cl.id=i.collection_id WHERE i.post_id=p.id AND cl.id=? AND (cl.user_id=? OR (cl.is_public=1 AND EXISTS(SELECT 1 FROM profiles c2 WHERE c2.user_id=cl.user_id AND c2.is_private=0))))");args.push(collection,me?.id||'');}
+ const sql='SELECT p.id,p.creator_id,p.media_path,p.media_type,p.caption,p.shared_prompt,p.status,p.visible,p.created_at,'+
+ 'p.comments_enabled,p.allow_remix,p.allow_download,p.model_id,p.view_count,p.media_provider,'+
+ 'c.username,c.display_name,c.avatar_path,'+
+ '(SELECT count(*) FROM post_likes l WHERE l.post_id=p.id) likes,'+
+ '(SELECT count(*) FROM comments cm WHERE cm.post_id=p.id) comments,'+
+ '(SELECT count(*) FROM saved_posts sv WHERE sv.post_id=p.id) saves,'+
+ 'EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id=p.id AND l.user_id=?) liked,'+
+ 'EXISTS(SELECT 1 FROM saved_posts sv WHERE sv.post_id=p.id AND sv.user_id=?) saved '+
+ 'FROM posts p JOIN profiles c ON c.user_id=p.creator_id WHERE '+conditions.join(' AND ')+
+ (sort==='popular'?' ORDER BY likes DESC,p.created_at DESC':
+  sort==='trending'?' ORDER BY (likes*2+comments*3+p.view_count/25.0)/(1.0+MAX(0,julianday("now")-julianday(p.created_at))) DESC,p.created_at DESC':
+  ' ORDER BY p.created_at DESC')+' LIMIT 25 OFFSET ?';
+ args.push(offset);
+ const rows=await stmt(db,sql,...args).all();
+ return {items:rows.results.slice(0,24).map(p=>({...p,liked:!!p.liked,saved:!!p.saved,visible:!!p.visible})),has_more:rows.results.length>24};
+}
+async function publicPost(db,url,me){
+ const id=needId(url.searchParams.get('id'));
+ // Query the requested ID directly, never rely on a bounded discovery feed.
+ const row=await stmt(db,"SELECT p.*,c.username,c.display_name,c.avatar_path,(SELECT count(*) FROM post_likes l WHERE l.post_id=p.id) likes,(SELECT count(*) FROM comments m WHERE m.post_id=p.id) comments,EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id=p.id AND l.user_id=?) liked,EXISTS(SELECT 1 FROM saved_posts s WHERE s.post_id=p.id AND s.user_id=?) saved FROM posts p JOIN profiles c ON c.user_id=p.creator_id WHERE p.id=? AND p.status='approved' AND p.visible=1 AND (c.is_private=0 OR c.user_id=?)",me?.id||'',me?.id||'',id,me?.id||'').first();
+ return row?{...row,liked:!!row.liked,saved:!!row.saved}:null;
+}
 async function replies(db,url,me){
  const id=needId(url.searchParams.get('creator_id'));
  const p=await stmt(db,'SELECT is_private FROM profiles WHERE user_id=?',id).first();
@@ -251,7 +294,7 @@ export default {
    }
    if(request.headers.has('Origin')&&request.headers.get('Origin')!==ORIGIN)bad(403,'Origin is not allowed.');
    if(path==='health'&&request.method==='GET')return cors(request,send({ok:true,storage:'cloudflare-d1-r2',version:1}));
-   const anonymous=['profile','connections','profiles','feed','replies','media'].includes(path)&&request.method==='GET';
+   const anonymous=['profile','connections','profiles','feed','replies','media','discover','post'].includes(path)&&request.method==='GET';
    const me=await user(request,env,!anonymous);
    let response;
    if(path==='profile'&&request.method==='GET')response=send(await profileGet(env.DB,url,me));
@@ -262,6 +305,8 @@ export default {
    else if(path==='profiles'&&request.method==='GET')response=send(await profileBatch(env.DB,url,me));
    else if(path==='pin'&&request.method==='POST')response=send(await pinSave(env.DB,me,await request.json()));
    else if(path==='feed'&&request.method==='GET')response=send(await feed(env.DB,url,me));
+   else if(path==='discover'&&request.method==='GET')response=send(await discover(env.DB,url,me));
+   else if(path==='post'&&request.method==='GET')response=send(await publicPost(env.DB,url,me));
    else if(path==='replies'&&request.method==='GET')response=send(await replies(env.DB,url,me));
    else if(path==='like'&&request.method==='POST')response=send(await react(env.DB,me,await request.json(),'like'));
    else if(path==='save'&&request.method==='POST')response=send(await react(env.DB,me,await request.json(),'save'));
