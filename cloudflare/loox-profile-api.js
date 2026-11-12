@@ -341,7 +341,7 @@ async function managePosts(db,me,url){
  const rows=await stmt(db,"SELECT id,creator_id,job_id,media_type,caption,shared_prompt,status,visible,created_at,comments_enabled,allow_remix,allow_download FROM posts WHERE creator_id=? ORDER BY created_at DESC LIMIT 25 OFFSET ?",me.id,offset).all();
  return {items:rows.results.slice(0,24),has_more:rows.results.length>24};
 }
-async function editPost(db,me,data){
+async function editPost(db,env,request,me,data){
  await ensureSelf(db,me);
  const id=needId(data.id),action=String(data.action||'');
  if(!['edit','hide','show','delete','permissions'].includes(action))bad(400,'Unknown post action.');
@@ -362,10 +362,12 @@ async function editPost(db,me,data){
   if(!caption||caption.length>300)bad(400,'Caption must be 1–300 characters.');
   let sharedPrompt=null;
   if(data.share_prompt===true){
-   // Preserve the original prompt ONLY when it was previously approved for sharing.
-   // Do not trust arbitrary prompt text from an untrusted browser.
    if(existing.shared_prompt)sharedPrompt=existing.shared_prompt;
-   else if(existing.job_id)bad(409,'Use the original AI job prompt from an authorized re-submission to share it.');
+   else if(existing.job_id){
+    const job=await jobForPublish(env,request,me,existing.job_id);
+    if(!job?.prompt)bad(404,'The original AI prompt is no longer available.');
+    sharedPrompt=job.prompt;
+   }
   }
   await stmt(db,"UPDATE posts SET caption=?,shared_prompt=?,status='pending',visible=0 WHERE id=? AND creator_id=?",caption,sharedPrompt,id,me.id).run();
   return {saved:true,status:'pending'};
@@ -547,7 +549,7 @@ export default {
    else if(path==='review-queue'&&request.method==='GET')response=send(await reviewQueue(env.DB,me));
    else if(path==='review'&&request.method==='POST')response=send(await reviewPost(env.DB,me,await request.json()));
    else if(path==='manage'&&request.method==='GET')response=send(await managePosts(env.DB,me,url));
-   else if(path==='manage'&&request.method==='POST')response=send(await editPost(env.DB,me,await request.json()));
+   else if(path==='manage'&&request.method==='POST')response=send(await editPost(env.DB,env,request,me,await request.json()));
    else if(path==='collections'&&request.method==='GET')response=send(await collectionList(env.DB,url,me));
    else if(path==='collections'&&['POST','PATCH','DELETE'].includes(request.method))response=send(await collectionSave(env.DB,me,await request.json(),request.method));
    else if(path==='collection-item'&&['POST','DELETE'].includes(request.method))response=send(await collectionItem(env.DB,me,await request.json(),request.method));
