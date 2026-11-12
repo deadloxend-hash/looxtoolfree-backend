@@ -83,6 +83,8 @@ async function profileSave(db,me,data){
  try{
   await stmt(db,'UPDATE profiles SET display_name=?,username=?,bio=?,profile_location=?,profile_website=? WHERE user_id=?',
    name,username,bio,loc||null,website,me.id).run();
+  await stmt(db,'INSERT INTO account_display_names(user_id,name,created_at) VALUES(?,?,?) ON CONFLICT(user_id) DO UPDATE SET name=excluded.name',
+   me.id,name,now()).run();
  }catch(e){if(/constraint|unique/i.test(String(e)))bad(409,'Username already taken.');throw e;}
  return summary(db,me.id,me);
 }
