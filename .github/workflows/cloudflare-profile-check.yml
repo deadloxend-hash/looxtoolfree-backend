@@ -1,0 +1,27 @@
+name: Verify Cloudflare profile worker
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "cloudflare/loox-profile-api.js"
+      - ".github/workflows/cloudflare-profile-check.yml"
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check Worker module syntax
+        run: node --check cloudflare/loox-profile-api.js
+      - name: Verify deployed Cloudflare API health
+        run: |
+          set -euo pipefail
+          curl --fail --show-error --silent --retry 5 --retry-delay 3 --retry-connrefused \
+            'https://loox-profile-api.looxai-studio.workers.dev/v1/health' \
+            | tee /tmp/loox-profile-health.json
+          node -e "const fs=require('fs');const x=JSON.parse(fs.readFileSync('/tmp/loox-profile-health.json'));if(x.ok!==true||x.storage!=='cloudflare-d1-r2')process.exit(1)"
