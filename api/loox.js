@@ -12,21 +12,34 @@ import {r2MediaAction} from '../lib/r2-media.js';
 import {chatAttachmentAction} from '../lib/chat-attachments.js';
 import {mediaURL,removeJobMedia} from '../lib/media-store.js';
 
+// The D1 profile privacy flag is authoritative for all public R2 media.
+// Legacy Supabase rows are still read during migration, but cannot override
+// a private or unavailable Cloudflare creator identity.
+async function cloudPublicProfile(id){
+ if(!/^[a-f0-9-]{36}$/i.test(String(id||'')))return null;
+ try{
+  const response=await fetch('https://loox-profile-api.looxai-studio.workers.dev/v1/profile?id='+encodeURIComponent(id),
+   {credentials:'omit',redirect:'error',signal:AbortSignal.timeout(9000)});
+  if(!response.ok)return null;
+  const p=await response.json();return p?.user_id===id?p:null;
+ }catch{return null;}
+}
+
 async function publicMedia(req,res){
  const type=String(req.query.type||''),id=String(req.query.id||''),thumbnail=req.query.variant!=='original';
  let item=null;
  if(type==='post'){
   const [post]=await rows('community_posts',{id:'eq.'+id,status:'eq.approved',visible:'eq.true',select:'creator_id,media_path,media_provider,media_key,thumbnail_key',limit:'1'});
-  if(post){const [profile]=await rows('creator_profiles',{user_id:'eq.'+post.creator_id,is_private:'eq.false',select:'user_id',limit:'1'});if(profile)item={storage_provider:post.media_provider,object_key:post.media_key,thumbnail_key:post.thumbnail_key,result_path:post.media_path};}
+  if(post&&await cloudPublicProfile(post.creator_id))item={storage_provider:post.media_provider,object_key:post.media_key,thumbnail_key:post.thumbnail_key,result_path:post.media_path};
  }else if(type==='template'){
   const [template]=await rows('template_catalog',{id:'eq.'+id,active:'eq.true',select:'media_path,media_provider,media_key,thumbnail_key',limit:'1'});
   if(template)item={storage_provider:template.media_provider,object_key:template.media_key,thumbnail_key:template.thumbnail_key,result_path:template.media_path,legacy_bucket:'loox-templates'};
  }else if(type==='cover'){
-  const [profile]=await rows('creator_profiles',{user_id:'eq.'+id,is_private:'eq.false',select:'cover_key',limit:'1'});
+  const profile=await cloudPublicProfile(id);
   if(profile?.cover_key)item={storage_provider:'r2',object_key:profile.cover_key,thumbnail_key:profile.cover_key};
  }else if(type==='avatar'){
-  const [profile]=await rows('creator_profiles',{user_id:'eq.'+id,is_private:'eq.false',select:'avatar_path,avatar_provider,avatar_key,avatar_thumbnail_key',limit:'1'});
-  if(profile)item={storage_provider:profile.avatar_provider,object_key:profile.avatar_key,thumbnail_key:profile.avatar_thumbnail_key,result_path:profile.avatar_path,legacy_bucket:'loox-avatars'};
+  const profile=await cloudPublicProfile(id);
+  if(profile?.avatar_key)item={storage_provider:'r2',object_key:profile.avatar_key,thumbnail_key:profile.avatar_thumbnail_key||profile.avatar_key};
  }
  need(item,404,'Public media is unavailable.');
  const url=await mediaURL(item,{thumbnail,expires:300});need(url,404,'Public media is unavailable.');
