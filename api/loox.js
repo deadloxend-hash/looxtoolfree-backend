@@ -21,6 +21,9 @@ async function publicMedia(req,res){
  }else if(type==='template'){
   const [template]=await rows('template_catalog',{id:'eq.'+id,active:'eq.true',select:'media_path,media_provider,media_key,thumbnail_key',limit:'1'});
   if(template)item={storage_provider:template.media_provider,object_key:template.media_key,thumbnail_key:template.thumbnail_key,result_path:template.media_path,legacy_bucket:'loox-templates'};
+ }else if(type==='cover'){
+  const [profile]=await rows('creator_profiles',{user_id:'eq.'+id,is_private:'eq.false',select:'cover_key',limit:'1'});
+  if(profile?.cover_key)item={storage_provider:'r2',object_key:profile.cover_key,thumbnail_key:profile.cover_key};
  }else if(type==='avatar'){
   const [profile]=await rows('creator_profiles',{user_id:'eq.'+id,is_private:'eq.false',select:'avatar_path,avatar_provider,avatar_key,avatar_thumbnail_key',limit:'1'});
   if(profile)item={storage_provider:profile.avatar_provider,object_key:profile.avatar_key,thumbnail_key:profile.avatar_thumbnail_key,result_path:profile.avatar_path,legacy_bucket:'loox-avatars'};
