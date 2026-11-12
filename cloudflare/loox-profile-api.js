@@ -120,7 +120,7 @@ async function profileBatch(db,url,me){
  const ids=[...new Set(String(url.searchParams.get('ids')||'').split(',').filter(validId))].slice(0,30);
  if(!ids.length)return {profiles:[]};
  const placeholders=ids.map(()=>'?').join(',');
- const rows=await stmt(db,'SELECT user_id,username,display_name,avatar_path,bio,is_private FROM profiles WHERE user_id IN ('+placeholders+') AND (is_private=0 OR user_id=?)',...ids,me?.id||'').all();
+ const rows=await stmt(db,'SELECT user_id,username,display_name,avatar_path,bio,is_private FROM profiles WHERE user_id IN ('+placeholders+') AND (is_private=0 OR user_id=? OR ?=1)',...ids,me?.id||'',me?.data?.app_metadata?.loox_template_admin===true?1:0).all();
  return {profiles:rows.results};
 }
 async function pinSave(db,me,p){
@@ -319,6 +319,22 @@ async function publish(db,env,request,me,data){
   id,me.id,jobId,job.result_path,mediaType,caption,data.share_prompt===true?job.prompt:null,'pending',0,now(),1,1,1,job.operation,0,'r2',key,job.thumbnail_key||null).run();}
  catch(e){if(/unique|constraint/i.test(String(e)))bad(409,'This creation was already submitted.');throw e;}
  return {id,status:'pending'};
+}
+async function adminStats(db,me){
+ if(me?.data?.app_metadata?.loox_template_admin!==true)bad(403,'Administrator access required.');
+ const counts=await stmt(db,
+  'SELECT (SELECT COUNT(*) FROM profiles) creators,'+
+  '(SELECT COUNT(*) FROM posts) posts,'+
+  "(SELECT COUNT(*) FROM posts WHERE status='approved' AND visible=1) published,"+
+  "(SELECT COUNT(*) FROM posts WHERE status='pending') pending,"+
+  '(SELECT COUNT(*) FROM follows) follows,'+
+  '(SELECT COUNT(*) FROM comments) comments,'+
+  '(SELECT COUNT(*) FROM post_likes) likes,'+
+  '(SELECT COUNT(*) FROM saved_posts) saves,'+
+  '(SELECT COUNT(*) FROM collections) collections,'+
+  '(SELECT COUNT(*) FROM notifications) notifications'
+ ).first();
+ return {storage:'cloudflare-d1',...counts};
 }
 async function reviewQueue(db,me){
  if(me?.data?.app_metadata?.loox_template_admin!==true)bad(403,'Administrator access required.');
@@ -549,6 +565,7 @@ export default {
    else if(path==='post'&&request.method==='GET')response=send(await publicPost(env.DB,url,me));
    else if(path==='publish'&&request.method==='POST')response=send(await publish(env.DB,env,request,me,await request.json()),201);
    else if(path==='review-queue'&&request.method==='GET')response=send(await reviewQueue(env.DB,me));
+   else if(path==='admin-stats'&&request.method==='GET')response=send(await adminStats(env.DB,me));
    else if(path==='review'&&request.method==='POST')response=send(await reviewPost(env.DB,me,await request.json()));
    else if(path==='manage'&&request.method==='GET')response=send(await managePosts(env.DB,me,url));
    else if(path==='manage'&&request.method==='POST')response=send(await editPost(env.DB,env,request,me,await request.json()));
