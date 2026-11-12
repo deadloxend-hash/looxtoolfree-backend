@@ -112,6 +112,13 @@ async function connections(db,url,me){
  const rows=await stmt(db,'SELECT p.user_id,p.username,p.display_name,p.bio,p.avatar_path,p.avatar_key FROM follows f JOIN profiles p ON p.user_id='+column+' WHERE '+where+'=? AND (p.is_private=0 OR p.user_id=?) ORDER BY f.created_at DESC LIMIT 25 OFFSET ?',id,me?.id||'',offset).all();
  return {hidden:false,items:rows.results.slice(0,24),has_more:rows.results.length>24};
 }
+async function profileBatch(db,url,me){
+ const ids=[...new Set(String(url.searchParams.get('ids')||'').split(',').filter(validId))].slice(0,30);
+ if(!ids.length)return {profiles:[]};
+ const placeholders=ids.map(()=>'?').join(',');
+ const rows=await stmt(db,'SELECT user_id,username,display_name,avatar_path,bio,is_private FROM profiles WHERE user_id IN ('+placeholders+') AND (is_private=0 OR user_id=?)',...ids,me?.id||'').all();
+ return {profiles:rows.results};
+}
 async function pinSave(db,me,p){
  await ensureSelf(db,me);
  const id=p.post_id;
@@ -240,7 +247,7 @@ export default {
    }
    if(request.headers.has('Origin')&&request.headers.get('Origin')!==ORIGIN)bad(403,'Origin is not allowed.');
    if(path==='health'&&request.method==='GET')return cors(request,send({ok:true,storage:'cloudflare-d1-r2',version:1}));
-   const anonymous=['profile','connections','feed','replies','media'].includes(path)&&request.method==='GET';
+   const anonymous=['profile','connections','profiles','feed','replies','media'].includes(path)&&request.method==='GET';
    const me=await user(request,env,!anonymous);
    let response;
    if(path==='profile'&&request.method==='GET')response=send(await profileGet(env.DB,url,me));
@@ -248,6 +255,7 @@ export default {
    else if(path==='privacy'&&request.method==='PATCH')response=send(await privacySave(env.DB,me,await request.json()));
    else if(path==='follow'&&request.method==='POST')response=send(await followSave(env.DB,me,await request.json()));
    else if(path==='connections'&&request.method==='GET')response=send(await connections(env.DB,url,me));
+   else if(path==='profiles'&&request.method==='GET')response=send(await profileBatch(env.DB,url,me));
    else if(path==='pin'&&request.method==='POST')response=send(await pinSave(env.DB,me,await request.json()));
    else if(path==='feed'&&request.method==='GET')response=send(await feed(env.DB,url,me));
    else if(path==='replies'&&request.method==='GET')response=send(await replies(env.DB,url,me));
