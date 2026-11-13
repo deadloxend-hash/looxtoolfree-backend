@@ -40,12 +40,13 @@ async function publicMedia(req,res){
  }else if(type==='template'){
   const [template]=await rows('template_catalog',{id:'eq.'+id,active:'eq.true',select:'media_path,media_provider,media_key,thumbnail_key',limit:'1'});
   if(template)item={storage_provider:template.media_provider,object_key:template.media_key,thumbnail_key:template.thumbnail_key,result_path:template.media_path,legacy_bucket:'loox-templates'};
- }else if(type==='cover'){
+ }else if(type==='cover'||type==='avatar'){
+  // Never expose or sign raw R2 keys from public profile metadata.
+  // Let the canonical Cloudflare Worker enforce profile privacy and ownership.
   const profile=await cloudPublicProfile(id);
-  if(profile?.cover_key)item={storage_provider:'r2',object_key:profile.cover_key,thumbnail_key:profile.cover_key};
- }else if(type==='avatar'){
-  const profile=await cloudPublicProfile(id);
-  if(profile?.avatar_key)item={storage_provider:'r2',object_key:profile.avatar_key,thumbnail_key:profile.avatar_thumbnail_key||profile.avatar_key};
+  need(profile&&(type==='cover'?profile.cover_key:profile.avatar_path),404,'Public media is unavailable.');
+  res.setHeader('Cache-Control','no-store, max-age=0');
+  return res.json({url:'https://loox-profile-api.looxai-studio.workers.dev/v1/media?type='+type+'&id='+encodeURIComponent(id),expires_in:300});
  }
  need(item,404,'Public media is unavailable.');
  const url=await mediaURL(item,{thumbnail,expires:300});need(url,404,'Public media is unavailable.');
