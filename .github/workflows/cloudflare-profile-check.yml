@@ -17,8 +17,17 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Check Worker module syntax
-        run: node --check cloudflare/loox-profile-api.js
+      - name: Check Worker module syntax and unsupported redirects
+        run: |
+          node --check cloudflare/loox-profile-api.js
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const source=fs.readFileSync('cloudflare/loox-profile-api.js','utf8');
+          if (/redirect\s*:\s*['"]error['"]/.test(source)) {
+            console.error('Workers fetch() does not support redirect:error; use manual.');
+            process.exit(1);
+          }
+          JS
       - name: Verify deployed Cloudflare API health
         run: |
           set -euo pipefail
