@@ -31,7 +31,7 @@ async function publicMedia(req,res){
  if(type==='post'){
   // Cloudflare D1 is authoritative. Legacy Supabase approval flags must never
   // grant access to media that has since been hidden, rejected or made private.
-  need(uuid.test(id),400,'Invalid media ID.');
+  need(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),400,'Invalid media ID.');
   const worker='https://loox-profile-api.looxai-studio.workers.dev/v1';
   const check=await fetch(worker+'/post?id='+encodeURIComponent(id),{redirect:'error',signal:AbortSignal.timeout(9000)});
   need(check.ok,404,'Public media is unavailable.');
