@@ -126,8 +126,11 @@ jobs:
           import assert from 'node:assert/strict';
           const base='https://loox-profile-api.looxai-studio.workers.dev/v1';
           const origin='https://deadloxend-hash.github.io';
-          const publicRes=await fetch(base+'/profile?id=2ffbb355-daec-4dc0-ad93-efb1aabdcc8c',{headers:{Origin:origin}});
-          console.log('anonymous profile with GitHub Pages origin:',publicRes.status,await publicRes.clone().text());
+          const feed=await (await fetch(base+'/discover?sort=latest')).json();
+          assert.ok(feed.items?.length>0);
+          const creator=encodeURIComponent(feed.items[0].creator_id);
+          const publicRes=await fetch(base+'/profile?id='+creator,{headers:{Origin:origin}});
+          console.log('anonymous profile with GitHub Pages origin:',publicRes.status);
           assert.equal(publicRes.status,200);
           assert.equal(publicRes.headers.get('access-control-allow-origin'),origin);
           const token='Bearer '+('a'.repeat(90));
