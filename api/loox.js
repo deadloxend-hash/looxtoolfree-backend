@@ -29,8 +29,14 @@ async function publicMedia(req,res){
  const type=String(req.query.type||''),id=String(req.query.id||''),thumbnail=req.query.variant!=='original';
  let item=null;
  if(type==='post'){
-  const [post]=await rows('community_posts',{id:'eq.'+id,status:'eq.approved',visible:'eq.true',select:'creator_id,media_path,media_provider,media_key,thumbnail_key',limit:'1'});
-  if(post&&await cloudPublicProfile(post.creator_id))item={storage_provider:post.media_provider,object_key:post.media_key,thumbnail_key:post.thumbnail_key,result_path:post.media_path};
+  // Cloudflare D1 is authoritative. Legacy Supabase approval flags must never
+  // grant access to media that has since been hidden, rejected or made private.
+  need(uuid.test(id),400,'Invalid media ID.');
+  const worker='https://loox-profile-api.looxai-studio.workers.dev/v1';
+  const check=await fetch(worker+'/post?id='+encodeURIComponent(id),{redirect:'error',signal:AbortSignal.timeout(9000)});
+  need(check.ok,404,'Public media is unavailable.');
+  res.setHeader('Cache-Control','no-store, max-age=0');
+  return res.json({url:worker+'/media?type=post&id='+encodeURIComponent(id)+'&variant='+(thumbnail?'preview':'original'),expires_in:300});
  }else if(type==='template'){
   const [template]=await rows('template_catalog',{id:'eq.'+id,active:'eq.true',select:'media_path,media_provider,media_key,thumbnail_key',limit:'1'});
   if(template)item={storage_provider:template.media_provider,object_key:template.media_key,thumbnail_key:template.thumbnail_key,result_path:template.media_path,legacy_bucket:'loox-templates'};
