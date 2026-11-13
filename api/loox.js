@@ -35,7 +35,7 @@ async function publicMedia(req,res){
   const worker='https://loox-profile-api.looxai-studio.workers.dev/v1';
   const check=await fetch(worker+'/post?id='+encodeURIComponent(id),{redirect:'error',signal:AbortSignal.timeout(9000)});
   const publicPost=check.ok?await check.json().catch(()=>null):null;
-  need(publicPost?.id===id&&publicPost.status==='approved'&&publicPost.visible===true,404,'Public media is unavailable.');
+  need(publicPost?.id===id&&publicPost.status==='approved'&&Boolean(publicPost.visible),404,'Public media is unavailable.');
   res.setHeader('Cache-Control','no-store, max-age=0');
   return res.json({url:worker+'/media?type=post&id='+encodeURIComponent(id)+'&variant='+(thumbnail?'preview':'original'),expires_in:300});
  }else if(type==='template'){
