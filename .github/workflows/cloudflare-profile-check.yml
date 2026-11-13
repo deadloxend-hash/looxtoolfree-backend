@@ -93,3 +93,20 @@ jobs:
           assert.equal(badOrigin.status,403);
           console.log('Security checks: response redaction, auth, CORS and headers passed');
           JS
+      - name: Verify Vercel compatibility route delegates to Cloudflare
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const base='https://loox-profile-api.looxai-studio.workers.dev/v1';
+          const d=await (await fetch(base+'/discover?sort=latest')).json();
+          assert.ok(d.items?.length>0);
+          const id=d.items[0].id;
+          const endpoint='https://looxtoolfree-backend.vercel.app/api/loox?action=public_media&type=post&id='+encodeURIComponent(id);
+          const response=await fetch(endpoint);
+          assert.equal(response.status,200,'Vercel compatibility media endpoint unavailable');
+          const body=await response.json();
+          assert.ok(body.url.startsWith(base+'/media?type=post&id='),'Legacy endpoint did not delegate media to Cloudflare');
+          const missing=await fetch('https://looxtoolfree-backend.vercel.app/api/loox?action=public_media&type=post&id=00000000-0000-4000-8000-000000000000');
+          assert.equal(missing.status,404,'Missing post should not be publicly viewable');
+          console.log('Legacy Vercel public media obeys Cloudflare post permissions');
+          JS
