@@ -14,9 +14,9 @@ where p.id = next.id and p.credits is distinct from next.credits;
 -- Per-model duration prices; legacy Wan operation IDs are also updated for consistency.
 with prices(id,credits,budget_millicents) as (
   values
-    ('video_wan22_i2v_fast_5',25,17400),
-    ('video_wan22_5b_fast_5',5,3000),
-    ('video_wan22_t2v_fast_5',15,12000),
+    ('video_wan22_i2v_fast',25,17400),
+    ('video_wan22_5b_fast',5,3000),
+    ('video_wan22_t2v_fast',15,12000),
     ('video_wan25_i2v_5',75,60000),
     ('video_wan25_i2v_10',140,120000),
     ('video_wan26_i2v_flash_5',35,30000),
