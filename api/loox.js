@@ -1,11 +1,12 @@
+import {memberTier,planTier,activeSubscription} from '../lib/plans.js';
 import {workspaceAssetAction} from '../lib/workspace-assets.js';
 import {enhancePrompt} from '../lib/prompt-enhancer.js';
 import {communityAction} from '../lib/community-admin.js';
-import {env,authenticate,account,aiReady,authReady,billingReady,handler,method,limit,need,rows,rpc,supa,json} from '../lib/core.js';
+import {env,authenticate,account,aiReady,authReady,billingReady,handler,method,limit,need,rows,rpc,supa,json,mac} from '../lib/core.js';
 import {start,status} from '../lib/jobs.js';
 import {imageCatalog,cloudJob,cloudOperations} from '../lib/image-cloud.js';
 import {videoCatalog,videoQuote,cloudVideoJob,cloudVideoStatus,cloudVideoOperations} from '../lib/video-cloud.js';
-import {checkout,portal} from '../lib/billing.js';
+import {checkout,portal,checkoutPlans} from '../lib/billing.js';
 import {templateAction} from '../lib/templates.js';
 import {r2Ready,deleteR2Object} from '../lib/r2.js';
 import {r2MediaAction} from '../lib/r2-media.js';
@@ -64,8 +65,8 @@ async function overview(u){
   rows('payments',{...recent,select:'plan,amount_cents,currency,status,created_at,reference'}),
   rows('payments',{...own,plan:'eq.lifetime',status:'eq.paid',select:'reference',limit:'1'})
  ]);
- const pro=subscriptions.some(s=>s.status==='active'||s.status==='cancelled'&&Date.parse(s.ends_at)>Date.now());
- return {profile:profiles[0],wallet:wallets[0],credits,jobs,subscriptions,payments,plan:pro?'pro':lifetime.length?'lifetime':'free'};
+ const active=subscriptions.filter(s=>activeSubscription(s)),tier=active.some(s=>planTier(s.plan)==='pro')?'pro':active.some(s=>planTier(s.plan)==='creator')?'creator':'basic';
+ return {profile:profiles[0],wallet:wallets[0],credits,jobs,subscriptions,payments,plan:lifetime.length?'pro':tier,legacyLifetime:Boolean(lifetime.length)};
 }
 async function removeAccount(u,password){
  need(typeof password==='string'&&password.length<=1024,400,'Confirm your password.');
@@ -96,14 +97,16 @@ export default handler(async(req,res)=>{
   method(req,'GET');
   let plans=[],operations=[],localWorker=null;
   if(authReady())[plans,operations,localWorker]=await Promise.all([rows('plans',{select:'id,price_cents,credits,cadence'}),rows('operations',{select:'id,cost'}),rows('local_worker_health',{id:'eq.1',select:'modes,last_seen'}).then(x=>x[0]).catch(()=>null)]);
-  return res.json({workspace:{assets:r2Ready(),promptEnhancer:Boolean(env.GEMINI_API_KEY)},auth:authReady(),ai:aiReady(),billing:billingReady(),r2Media:{configured:r2Ready(),imagesOnly:true},testBilling:env.LEMON_MODE==='test',plans,operations,local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000),referenceAvailable:Boolean(aiReady()&&localWorker?.modes?.includes('generate_reference')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations).map(m=>m.id==='z_image_turbo'?{...m,available:Boolean(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000)?'available':m.status}:m).concat([{id:'flux2_klein_local_edit',name:'FLUX.2 Klein 4B · Image Edit',provider:'LOOX Studio',description:'Reference image editing on your private GPU',cost:operations.find(o=>o.id==='generate_flux2_klein_edit')?.cost??3,operation:'generate_flux2_klein_edit',available:Boolean(aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000?'available':'temporarily_unavailable',reason:'Select a reference image and enter an editing prompt. Requires the updated Windows GPU worker.'}]),videoModels:videoCatalog(operations),faceSwap:{available:Boolean(env.LOOX_FACE_SWAP_LICENSED==='true'&&aiReady()&&localWorker?.modes?.includes('face_swap')&&Date.now()-Date.parse(localWorker.last_seen)<90000),cost:operations.find(o=>o.id==='face_swap')?.cost??6},
+  return res.json({workspace:{assets:r2Ready(),promptEnhancer:Boolean(env.GEMINI_API_KEY)},auth:authReady(),ai:aiReady(),billing:billingReady(),checkoutPlans:billingReady()?checkoutPlans():[],r2Media:{configured:r2Ready(),imagesOnly:true},testBilling:env.LEMON_MODE==='test',plans:plans.filter(p=>p.id!=='lifetime'),operations,rewards:{credits:1,interval_hours:12,balance_cap:10},local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000),referenceAvailable:Boolean(aiReady()&&localWorker?.modes?.includes('generate_reference')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations).map(m=>m.id==='z_image_turbo'?{...m,available:Boolean(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:(m.available||aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000)?'available':m.status}:m).concat([{id:'flux2_klein_local_edit',name:'FLUX.2 Klein 4B · Image Edit',provider:'LOOX Studio',description:'Reference image editing on your private GPU',cost:operations.find(o=>o.id==='generate_flux2_klein_edit')?.cost??3,operation:'generate_flux2_klein_edit',available:Boolean(aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000?'available':'temporarily_unavailable',reason:'Select a reference image and enter an editing prompt. Requires the updated Windows GPU worker.'}]),videoModels:videoCatalog(operations),faceSwap:{available:Boolean(env.LOOX_FACE_SWAP_LICENSED==='true'&&aiReady()&&localWorker?.modes?.includes('face_swap')&&Date.now()-Date.parse(localWorker.last_seen)<90000),cost:operations.find(o=>o.id==='face_swap')?.cost??6},
    ...(authReady()?{url:env.SUPABASE_URL,key:env.SUPABASE_PUBLISHABLE_KEY}:{})});
  }
+ if(action==='public_plan'){method(req,'GET');need(/^[a-f0-9-]{36}$/i.test(String(req.query.id||'')),400,'Invalid profile.');return res.json({plan:await memberTier(req.query.id)});}
  if(action==='public_media'){method(req,'GET');return publicMedia(req,res);}
  const u=await authenticate(req);
  await limit(u,'api',100);
  await account(u);
  if(action==='enhance_prompt'){method(req,'POST');return res.json(await enhancePrompt(u,json(req)));}
+ if(action==='reward'){method(req,'GET');return res.json(await rpc('reward',{p_user:u.id,p_fingerprint:mac('bonus:'+u.email.trim().toLowerCase()),p_claim:false}));}
  if(action==='account'){method(req,'GET');return res.json(await overview(u));}
  if(action==='gpu'){
   method(req,'GET');
@@ -119,7 +122,7 @@ export default handler(async(req,res)=>{
    operation:'in.('+['generate','generate_z_image','generate_video',...cloudOperations,...cloudVideoOperations].join(',')+')',state:'neq.failed',select:'operation',limit:'1000'});
   const used={generate:0,generate_video:0};
   for(const job of jobs){if(job.operation==='generate_video'||cloudVideoOperations.includes(job.operation))used.generate_video++;else if(job.operation.startsWith('generate'))used.generate++;}
-  const limit=1000000000;
+  const tier=await memberTier(u.id),limit=tier==='pro'?250:tier==='creator'?100:25;
   return res.json({limit,used,remaining:{generate:Math.max(0,limit-used.generate),
    generate_video:Math.max(0,limit-used.generate_video)},reset_at:new Date(Date.parse(start)+86400000).toISOString()});
  }
@@ -147,6 +150,7 @@ export default handler(async(req,res)=>{
  }
  if(action==='status'){method(req,'GET');const [j]=await rows('jobs',{id:'eq.'+req.query.id,user_id:'eq.'+u.id,select:'operation'});return res.json(j&&cloudVideoOperations.includes(j.operation)?await cloudVideoStatus(u,req.query.id):await status(u,req.query.id));}
  method(req,'POST');const b=json(req);
+ if(action==='claim_reward'){await limit(u,'reward',4,60);const ip=String(req.headers['x-vercel-forwarded-for']||'').split(',')[0].trim();if(ip)await limit({id:mac('return-ip:'+ip)},'reward-network',20,86400);return res.json(await rpc('reward',{p_user:u.id,p_fingerprint:mac('bonus:'+u.email.trim().toLowerCase()),p_claim:true}));}
  if(action==='video_quote'){await limit(u,'video_quote',60);return res.json(videoQuote(u,b,await rows('operations',{select:'id,cost'})));}
  if(action==='job'){await limit(u,'submit',8);return res.status(202).json(await start(u,b));}
  if(action==='cloud_job'){await limit(u,'submit',8);return res.status(202).json(await cloudJob(u,b));}
