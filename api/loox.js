@@ -34,7 +34,8 @@ async function publicMedia(req,res){
   need(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),400,'Invalid media ID.');
   const worker='https://loox-profile-api.looxai-studio.workers.dev/v1';
   const check=await fetch(worker+'/post?id='+encodeURIComponent(id),{redirect:'error',signal:AbortSignal.timeout(9000)});
-  need(check.ok,404,'Public media is unavailable.');
+  const publicPost=check.ok?await check.json().catch(()=>null):null;
+  need(publicPost?.id===id&&publicPost.status==='approved'&&publicPost.visible===true,404,'Public media is unavailable.');
   res.setHeader('Cache-Control','no-store, max-age=0');
   return res.json({url:worker+'/media?type=post&id='+encodeURIComponent(id)+'&variant='+(thumbnail?'preview':'original'),expires_in:300});
  }else if(type==='template'){
