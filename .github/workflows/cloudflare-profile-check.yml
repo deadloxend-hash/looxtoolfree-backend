@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "cloudflare/loox-profile-api.js"
+      - "test/profile-self-like.test.js"
       - "api/loox.js"
       - ".github/workflows/cloudflare-profile-check.yml"
 permissions:
@@ -28,6 +29,8 @@ jobs:
             process.exit(1);
           }
           JS
+      - name: Check creator self-likes, privacy and notification regression
+        run: node --test test/profile-self-like.test.js
       - name: Verify deployed Cloudflare API health
         run: |
           set -euo pipefail
