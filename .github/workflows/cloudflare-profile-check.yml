@@ -111,3 +111,17 @@ jobs:
           assert.equal(missing.status,404,'Missing post should not be publicly viewable');
           console.log('Legacy Vercel public media obeys Cloudflare post permissions');
           JS
+      - name: Diagnose authenticated Worker request path and GitHub Pages CORS
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const base='https://loox-profile-api.looxai-studio.workers.dev/v1';
+          const origin='https://deadloxend-hash.github.io';
+          const publicRes=await fetch(base+'/profile?id=2ffbb355-daec-4dc0-ad93-efb1aabdcc8c',{headers:{Origin:origin}});
+          console.log('anonymous profile with GitHub Pages origin:',publicRes.status,await publicRes.clone().text());
+          assert.equal(publicRes.status,200);
+          assert.equal(publicRes.headers.get('access-control-allow-origin'),origin);
+          const forged=await fetch(base+'/profile?id=2ffbb355-daec-4dc0-ad93-efb1aabdcc8c',{headers:{Origin:origin,Authorization:'Bearer '+('a'.repeat(90))}});
+          console.log('invalid signed-in session response:',forged.status,await forged.text());
+          assert.equal(forged.status,401,'Invalid bearer token must not cause an internal 503 error');
+          JS
