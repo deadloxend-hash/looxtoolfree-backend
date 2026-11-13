@@ -13,10 +13,23 @@ const needId=x=>validId(x)?x:bad(400,'Invalid ID.');
 const send=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 const now=()=>new Date().toISOString();
 const options=u=>({headers:{Authorization:u}});
+const publicPostData=row=>{
+ if(!row)return row;
+ const {job_id,media_key,thumbnail_key,avatar_key,avatar_thumbnail_key,...safe}=row;
+ return safe;
+};
+async function limitActions(db,id,action,maxPerMinute){
+ const minute=Math.floor(Date.now()/60000);
+ const r=await stmt(db,'INSERT INTO action_windows(user_id,action,window_start,count) VALUES(?,?,?,1) ON CONFLICT(user_id,action) DO UPDATE SET count=CASE WHEN action_windows.window_start=excluded.window_start THEN action_windows.count+1 ELSE 1 END,window_start=excluded.window_start WHERE action_windows.window_start<>excluded.window_start OR action_windows.count<?',id,action,minute,maxPerMinute).run();
+ if(!r.meta?.changes)bad(429,'Too many actions. Please try again shortly.');
+}
 function cors(request,response){
  const h=new Headers(response.headers),o=request.headers.get('Origin');
  if(o===ORIGIN){h.set('Access-Control-Allow-Origin',ORIGIN);h.set('Vary','Origin');}
  h.set('X-Content-Type-Options','nosniff');
+ h.set('Referrer-Policy','no-referrer');
+ h.set('X-Frame-Options','DENY');
+ h.set('Permissions-Policy','camera=(), microphone=(), geolocation=()');
  return new Response(response.body,{status:response.status,headers:h});
 }
 async function user(request,env,required=true){
@@ -52,8 +65,8 @@ async function summary(db,id,me){
  id,'approved',id,'approved',id,id,me?.id||'',id).first();
  return {
   user_id:p.user_id,username:p.username,display_name:p.display_name,bio:p.bio,
-  avatar_path:p.avatar_path,avatar_key:p.avatar_key,avatar_thumbnail_key:p.avatar_thumbnail_key,
-  cover_key:p.cover_key,profile_location:p.profile_location,profile_website:p.profile_website,
+  avatar_path:p.avatar_path,
+  cover_key:!!p.cover_key,profile_location:p.profile_location,profile_website:p.profile_website,
   created_at:p.created_at,pinned_post_id:p.pinned_post_id,
   is_private:!!p.is_private,hide_connections:!!p.hide_connections,
   ...(me?.id===id?{notifications_enabled:!!p.notifications_enabled}:{}),
@@ -72,6 +85,7 @@ async function profileGet(db,url,me){
 }
 async function profileSave(db,me,data){
  const p=await ensureSelf(db,me);
+ await limitActions(db,me.id,'profile',10);
  const name=String(data.display_name??p.display_name).trim(),username=String(data.username??p.username).trim().toLowerCase();
  const bio=String(data.bio??p.bio??'').trim(),loc=String(data.profile_location??p.profile_location??'').trim();
  const site=String(data.profile_website??p.profile_website??'').trim();
@@ -90,12 +104,14 @@ async function profileSave(db,me,data){
 }
 async function privacySave(db,me,p){
  await ensureSelf(db,me);
+ await limitActions(db,me.id,'privacy',12);
  await stmt(db,'UPDATE profiles SET is_private=?,hide_connections=?,notifications_enabled=? WHERE user_id=?',
   p.is_private===true?1:0,p.hide_connections===true?1:0,p.notifications_enabled!==false?1:0,me.id).run();
  return summary(db,me.id,me);
 }
 async function followSave(db,me,p){
  await ensureSelf(db,me);
+ await limitActions(db,me.id,'follow',12);
  const id=needId(p.creator_id);
  if(id===me.id)bad(400,'Cannot follow yourself.');
  const target=await stmt(db,'SELECT is_private FROM profiles WHERE user_id=?',id).first();
@@ -113,7 +129,7 @@ async function connections(db,url,me){
  if(!creator||creator.is_private&&me?.id!==id||creator.hide_connections&&me?.id!==id)return {hidden:true,items:[],has_more:false};
  const offset=Math.min(10000,Math.max(0,Number(url.searchParams.get('offset'))||0));
  const column=kind==='followers'?'f.follower_id':'f.creator_id',where=kind==='followers'?'f.creator_id':'f.follower_id';
- const rows=await stmt(db,'SELECT p.user_id,p.username,p.display_name,p.bio,p.avatar_path,p.avatar_key FROM follows f JOIN profiles p ON p.user_id='+column+' WHERE '+where+'=? AND (p.is_private=0 OR p.user_id=?) ORDER BY f.created_at DESC LIMIT 25 OFFSET ?',id,me?.id||'',offset).all();
+ const rows=await stmt(db,'SELECT p.user_id,p.username,p.display_name,p.bio,p.avatar_path FROM follows f JOIN profiles p ON p.user_id='+column+' WHERE '+where+'=? AND (p.is_private=0 OR p.user_id=?) ORDER BY f.created_at DESC LIMIT 25 OFFSET ?',id,me?.id||'',offset).all();
  return {hidden:false,items:rows.results.slice(0,24),has_more:rows.results.length>24};
 }
 async function profileBatch(db,url,me){
@@ -125,6 +141,7 @@ async function profileBatch(db,url,me){
 }
 async function pinSave(db,me,p){
  await ensureSelf(db,me);
+ await limitActions(db,me.id,'pin',10);
  const id=p.post_id;
  if(id!==null){
   needId(id);
@@ -163,7 +180,7 @@ async function feed(db,url,me){
  if(cond)args.push(id);
  args.push(limit+1,offset);
  const rows=await stmt(db,sql,...args).all();
- return {items:rows.results.slice(0,limit).map(p=>({...p,visible:!!p.visible,liked:!!p.liked,saved:!!p.saved})),has_more:rows.results.length>limit};
+ return {items:rows.results.slice(0,limit).map(p=>publicPostData({...p,visible:!!p.visible,liked:!!p.liked,saved:!!p.saved})),has_more:rows.results.length>limit};
 }
 async function discover(db,url,me){
  const kind=url.searchParams.get('kind')||'all',sort=url.searchParams.get('sort')||'latest';
@@ -206,7 +223,7 @@ async function publicPost(db,url,me){
  const id=needId(url.searchParams.get('id'));
  // Query the requested ID directly, never rely on a bounded discovery feed.
  const row=await stmt(db,"SELECT p.*,c.username,c.display_name,c.avatar_path,(SELECT count(*) FROM post_likes l WHERE l.post_id=p.id) likes,(SELECT count(*) FROM comments m WHERE m.post_id=p.id) comments,EXISTS(SELECT 1 FROM post_likes l WHERE l.post_id=p.id AND l.user_id=?) liked,EXISTS(SELECT 1 FROM saved_posts s WHERE s.post_id=p.id AND s.user_id=?) saved FROM posts p JOIN profiles c ON c.user_id=p.creator_id WHERE p.id=? AND p.status='approved' AND p.visible=1 AND (c.is_private=0 OR c.user_id=?)",me?.id||'',me?.id||'',id,me?.id||'').first();
- return row?{...row,liked:!!row.liked,saved:!!row.saved}:null;
+ return row?publicPostData({...row,liked:!!row.liked,saved:!!row.saved}):null;
 }
 async function replies(db,url,me){
  const id=needId(url.searchParams.get('creator_id'));
@@ -219,6 +236,7 @@ async function replies(db,url,me){
 }
 async function react(db,me,p,kind){
  await ensureSelf(db,me);
+ await limitActions(db,me.id,kind,36);
  const id=needId(p.post_id);
  const post=await stmt(db,"SELECT p.creator_id,c.is_private FROM posts p JOIN profiles c ON c.user_id=p.creator_id WHERE p.id=? AND p.status='approved' AND p.visible=1",id).first();
  if(!post||post.is_private&&post.creator_id!==me.id)bad(404,'Post unavailable.');
