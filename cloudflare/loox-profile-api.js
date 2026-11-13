@@ -580,7 +580,11 @@ export default {
    else if(path==='pin'&&request.method==='POST')response=send(await pinSave(env.DB,me,await request.json()));
    else if(path==='feed'&&request.method==='GET')response=send(await feed(env.DB,url,me));
    else if(path==='discover'&&request.method==='GET')response=send(await discover(env.DB,url,me));
-   else if(path==='post'&&request.method==='GET')response=send(await publicPost(env.DB,url,me));
+   else if(path==='post'&&request.method==='GET'){
+    const post=await publicPost(env.DB,url,me);
+    if(!post)bad(404,'Post unavailable.');
+    response=send(post);
+   }
    else if(path==='publish'&&request.method==='POST')response=send(await publish(env.DB,env,request,me,await request.json()),201);
    else if(path==='review-queue'&&request.method==='GET')response=send(await reviewQueue(env.DB,me));
    else if(path==='admin-stats'&&request.method==='GET')response=send(await adminStats(env.DB,me));
