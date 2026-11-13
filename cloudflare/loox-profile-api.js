@@ -38,7 +38,7 @@ async function user(request,env,required=true){
  if(!/^Bearer [\w.-]{20,8192}$/.test(auth))bad(401,'Invalid session token.');
  let r;
  try{
-  r=await fetch(env.SUPABASE_URL+'/auth/v1/user',{headers:{Authorization:auth,apikey:env.SUPABASE_PUBLISHABLE_KEY},redirect:'error',signal:AbortSignal.timeout(9000)});
+  r=await fetch(env.SUPABASE_URL+'/auth/v1/user',{headers:{Authorization:auth,apikey:env.SUPABASE_PUBLISHABLE_KEY},redirect:'manual',signal:AbortSignal.timeout(9000)});
  }catch(e){
   // Temporary server-only diagnostic: no tokens, request bodies, user IDs or IPs.
   await stmt(env.DB,'INSERT INTO worker_error_diagnostics(created_at,route,error_name,error_message) VALUES(?,?,?,?)',now(),'auth/v1/user',String(e?.name||'Error').slice(0,80),String(e?.message||'Unknown authentication error').slice(0,300)).run().catch(()=>{});
@@ -319,7 +319,7 @@ async function jobForPublish(env,request,me,jobId){
   select:'id,operation,prompt,result_path,storage_provider,object_key,thumbnail_key,media_type',limit:'1'});
  const response=await fetch(env.SUPABASE_URL+'/rest/v1/loox_jobs?'+query,{
   headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,Authorization:request.headers.get('Authorization'),Accept:'application/json'},
-  redirect:'error',signal:AbortSignal.timeout(12000)});
+  redirect:'manual',signal:AbortSignal.timeout(12000)});
  if(!response.ok)bad(503,'Could not verify the completed AI creation.');
  const rows=await response.json();
  return Array.isArray(rows)?rows[0]:null;
