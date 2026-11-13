@@ -26,7 +26,11 @@ vm.runInNewContext(source+'\nglobalThis.testRoutes={catalog,imageBytes,imageCata
 const {catalog,imageBytes,imageCatalog,cloudJob}=context.testRoutes;
 assert.equal(catalog.length,17);
 assert.equal(imageCatalog([]).filter(x=>x.available).length,0);
-assert.equal(imageCatalog(catalog.map(m=>({id:m.operation,cost:m.cost}))).filter(x=>x.available).length,1);
+// A Replicate credential never enables Z-Image Turbo: that model is PC-only.
+assert.equal(imageCatalog(catalog.map(m=>({id:m.operation,cost:m.cost}))).filter(x=>x.available).length,0);
+const z=imageCatalog(catalog.map(m=>({id:m.operation,cost:m.cost}))).find(m=>m.id==='z_image_turbo');
+assert.equal(z.status,'coming_soon');
+assert.equal(z.provider,'LOOX Studio');
 for(const m of catalog){
  calls.length=0;
  const bytes=await imageBytes(m,'Mock prompt','1:1',{});
@@ -39,6 +43,11 @@ for(const m of catalog){
  assert.ok(!payload.includes('sk-proj-'),m.id+' leaked a credential');
  console.log('PASS '+m.id);
 }
+
+const beforeZ=calls.length;
+await assert.rejects(cloudJob({id:'test'},{model:'z_image_turbo',requestId:'ignore'}),e=>e.status===503&&/coming soon/i.test(e.message));
+assert.equal(calls.length,beforeZ,'Offline Z-Image Turbo must never contact Replicate or spend credits');
+console.log('PASS Z-Image Turbo rejects offline requests without paid API calls');
 
 for(const m of catalog.filter(m=>m.id!=='z_image_turbo')){const before=calls.length;await assert.rejects(cloudJob({id:'test'},{model:m.id}),e=>e.status===503);assert.equal(calls.length,before,m.id+' contacted a paid provider while unverified')}
 console.log('PASS all unverified models fail closed before reservation or provider call');
