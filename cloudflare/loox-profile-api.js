@@ -39,9 +39,7 @@ async function user(request,env,required=true){
  let r;
  try{
   r=await fetch(env.SUPABASE_URL+'/auth/v1/user',{headers:{Authorization:auth,apikey:env.SUPABASE_PUBLISHABLE_KEY},redirect:'manual',signal:AbortSignal.timeout(9000)});
- }catch(e){
-  // Temporary server-only diagnostic: no tokens, request bodies, user IDs or IPs.
-  await stmt(env.DB,'INSERT INTO worker_error_diagnostics(created_at,route,error_name,error_message) VALUES(?,?,?,?)',now(),'auth/v1/user',String(e?.name||'Error').slice(0,80),String(e?.message||'Unknown authentication error').slice(0,300)).run().catch(()=>{});
+ }catch{
   bad(503,'Authentication provider temporarily unreachable.');
  }
  if(!r.ok){if(required)bad(401,'Please sign in again.');return null;}
