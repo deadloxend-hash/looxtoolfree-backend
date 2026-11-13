@@ -57,3 +57,13 @@ To activate it on the Windows machine:
 Security: the backend validates and re-encodes the image into private storage and passes only a short-lived signed link to the local worker. The database queue contains no raw base64 image, input images are not published to Community, and the maintenance task deletes reference files after jobs settle. The image is not stored in the browser's saved session or posted publicly automatically.
 
 Until the updated local worker is running, a reference request is rejected **before reserving credits**, while plain FLUX text-to-image remains available.
+
+## Cloudflare fallback when the PC is offline
+
+The FLUX.1 Schnell **text-to-image** model now routes to the authenticated Windows ComfyUI worker first. When its health heartbeat has been absent for 90 seconds, the Vercel backend uses Cloudflare Workers AI with a private API token instead. Nothing needs to be changed on your Windows PC for this fallback.
+
+- Install `CLOUDFLARE_AI_ACCOUNT_ID` and `CLOUDFLARE_AI_API_TOKEN` as private Vercel Production environment variables. The Cloudflare token needs only account-scoped Workers AI Read permission.
+- The Cloudflare FLUX.1 Schnell endpoint accepts a prompt, seed and step count, but no custom width/height. The backend crops and scales the returned image to the chosen aspect ratio, which may affect framing.
+- **Reference images, video and other local workflows never fall back to Cloudflare FLUX.1 Schnell.** Offline requests for those workflows fail before credits are reserved.
+- Cloudflare Workers AI has an account-shared 10,000-Neuron daily free allocation. For cost control, LOOX additionally caps fallback submissions at 100 across the entire platform per UTC day. GPU requests do not use this Cloudflare cap.
+- Results and thumbnails go into private R2 storage. Failed Cloudflare generations release reserved LOOX credits. No credentials are sent to the frontend.
