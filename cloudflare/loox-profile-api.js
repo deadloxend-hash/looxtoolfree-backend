@@ -36,7 +36,14 @@ async function user(request,env,required=true){
  const auth=request.headers.get('Authorization')||'';
  if(!auth){if(required)bad(401,'Sign in to continue.');return null;}
  if(!/^Bearer [\w.-]{20,8192}$/.test(auth))bad(401,'Invalid session token.');
- const r=await fetch(env.SUPABASE_URL+'/auth/v1/user',{headers:{Authorization:auth,apikey:env.SUPABASE_PUBLISHABLE_KEY},redirect:'error',signal:AbortSignal.timeout(9000)});
+ let r;
+ try{
+  r=await fetch(env.SUPABASE_URL+'/auth/v1/user',{headers:{Authorization:auth,apikey:env.SUPABASE_PUBLISHABLE_KEY},redirect:'error',signal:AbortSignal.timeout(9000)});
+ }catch(e){
+  // Temporary server-only diagnostic: no tokens, request bodies, user IDs or IPs.
+  await stmt(env.DB,'INSERT INTO worker_error_diagnostics(created_at,route,error_name,error_message) VALUES(?,?,?,?)',now(),'auth/v1/user',String(e?.name||'Error').slice(0,80),String(e?.message||'Unknown authentication error').slice(0,300)).run().catch(()=>{});
+  bad(503,'Authentication provider temporarily unreachable.');
+ }
  if(!r.ok){if(required)bad(401,'Please sign in again.');return null;}
  const u=await r.json();
  if(!validId(u.id)||u.is_anonymous||!u.email_confirmed_at)bad(403,'Verify your account.');
