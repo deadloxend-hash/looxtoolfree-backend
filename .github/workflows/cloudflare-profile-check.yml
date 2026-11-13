@@ -57,3 +57,39 @@ jobs:
           assert.equal(forbidden.status,403);
           console.log('Cloudflare profile integration checks passed');
           JS
+      - name: Audit public payload redaction, auth and security headers
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          const base='https://loox-profile-api.looxai-studio.workers.dev/v1';
+          const raw=async path=>fetch(base+path,{redirect:'error'});
+          const feed=await raw('/discover?sort=latest');
+          assert.equal(feed.status,200);
+          const publicFeed=await feed.json();
+          assert.ok(publicFeed.items.length>0);
+          const post=publicFeed.items[0];
+          const id=encodeURIComponent(post.id),creator=encodeURIComponent(post.creator_id);
+          const forbiddenKeys=['job_id','media_key','thumbnail_key','avatar_key','avatar_thumbnail_key'];
+          const detail=await raw('/post?id='+id);
+          assert.equal(detail.status,200);
+          const publicPost=await detail.json();
+          for(const key of forbiddenKeys)assert.ok(!(key in publicPost),'Post leaked '+key);
+          const timeline=await raw('/feed?tab=posts&creator_id='+creator);
+          assert.equal(timeline.status,200);
+          const items=(await timeline.json()).items;
+          assert.ok(items.length>0);
+          for(const item of items)for(const key of forbiddenKeys)assert.ok(!(key in item),'Timeline leaked '+key);
+          const profile=await raw('/profile?id='+creator);
+          assert.equal(profile.status,200);
+          const user=await profile.json();
+          for(const key of ['avatar_key','avatar_thumbnail_key'])assert.ok(!(key in user),'Profile leaked '+key);
+          for(const [name,value] of [['x-content-type-options','nosniff'],['referrer-policy','no-referrer'],['x-frame-options','DENY']])
+            assert.equal(profile.headers.get(name),value);
+          const anonNotifications=await raw('/notifications');
+          assert.equal(anonNotifications.status,401);
+          const anonMutation=await fetch(base+'/follow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({creator_id:post.creator_id,follow:true})});
+          assert.equal(anonMutation.status,401);
+          const badOrigin=await fetch(base+'/discover',{headers:{Origin:'https://attacker.example'}});
+          assert.equal(badOrigin.status,403);
+          console.log('Security checks: response redaction, auth, CORS and headers passed');
+          JS
