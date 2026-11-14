@@ -87,7 +87,7 @@ test('real template upload endpoint rejects password-only admins and ordinary me
  const {r2MediaAction}=await import('../lib/r2-media.js');
  const user={id:randomUUID(),email:'test@example.invalid',email_confirmed_at:new Date().toISOString(),user_metadata:{loox_terms:'2026-11'},app_metadata:{loox_template_admin:true}};
  Object.assign(process.env,{SUPABASE_URL:'https://unit.invalid',SUPABASE_PUBLISHABLE_KEY:'test-public',SUPABASE_SERVICE_ROLE_KEY:'test-server',LOOX_IDENTITY_SECRET:'test-only',LOOX_R2_ACCOUNT_ID:'a'.repeat(32),LOOX_R2_BUCKET:'test-bucket',LOOX_R2_ACCESS_KEY_ID:'test-key',LOOX_R2_SECRET_ACCESS_KEY:'test-secret'});
- t.mock.method(globalThis,'fetch',async input=>{const u=new URL(input);assert.equal(u.hostname,'unit.invalid','No media request is allowed before authorization');return Response.json(u.pathname==='/auth/v1/user'?user:null);});
+ t.mock.method(globalThis,'fetch',async input=>{const u=new URL(input);assert.equal(u.hostname,'unit.invalid','No media request is allowed before authorization');return Response.json(u.pathname==='/auth/v1/user'?user:u.pathname==='/rest/v1/loox_account_restrictions'?[]:null);});
  const request=(aal,extra={})=>({method:'POST',query:{},headers:{'content-type':'application/json',authorization:'Bearer '+Buffer.from('{"alg":"HS256"}').toString('base64url')+'.'+Buffer.from(JSON.stringify({sub:user.id,iss:'https://unit.invalid/auth/v1',aud:'authenticated',exp:Date.now()/1000+300,aal,...extra})).toString('base64url')+'.testsignature'},body:{purpose:'template_video_prepare',bytes:1000}});
  const response={json:x=>x};await assert.rejects(r2MediaAction(request('aal1'),response),e=>e.status===403);
  user.app_metadata={};await assert.rejects(r2MediaAction(request('aal2'),response),e=>e.status===403);
