@@ -1,3 +1,5 @@
+import {monitorBilling} from '../src/billing/monitoring.js';
+import {deliverAlerts,incident} from '../src/notifications/security-alerts.js';
 import {method,handler,env,need,equal,rows,supa,rpc} from '../lib/core.js';
 import {reconcile} from '../lib/jobs.js';
 import {cloudOperations} from '../lib/image-cloud.js';
@@ -11,6 +13,8 @@ export default handler(async(req,res)=>{
  const cron=env.CRON_SECRET&&equal(authorization,'Bearer '+env.CRON_SECRET);
  need(cron,401,'Unauthorized.');
  if(req.query.action==='r2_migrate')return res.json(await migrateMediaBatch(Number(req.query.limit||8)));
+ await monitorBilling();
+ await deliverAlerts();
  await rpc('local_expire',{});
  const staleCloud=await rows('jobs',{state:'in.(reserved,processing)',operation:'in.('+cloudOperations.join(',')+')',created_at:'lt.'+new Date(Date.now()-10*60000).toISOString(),select:'id',limit:'100'});
  for(const job of staleCloud)await rpc('finish',{p_id:job.id,p_path:null});

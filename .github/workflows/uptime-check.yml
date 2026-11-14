@@ -1,0 +1,22 @@
+name: LOOX external availability check
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  availability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check backend and database from GitHub
+        run: |
+          curl --fail --silent --show-error --max-time 25 --retry 2 \
+            'https://looxtoolfree-backend.vercel.app/api/loox?action=health' -o /tmp/health.json
+          node -e "const x=require('/tmp/health.json');if(x.ok!==true||x.service!=='loox-api')process.exit(1);console.log('LOOX backend and database available')"
+      - name: Check public pricing page
+        run: |
+          curl --fail --silent --show-error --max-time 25 --retry 2 \
+            'https://deadloxend-hash.github.io/looxtoolsfree/upgrade.html' -o /tmp/upgrade.html
+          node -e "const s=require('fs').readFileSync('/tmp/upgrade.html','utf8');if(!s.includes('lp-buy-credits'))process.exit(1);console.log('LOOX pricing page available')"

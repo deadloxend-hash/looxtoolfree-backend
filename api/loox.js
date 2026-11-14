@@ -1,3 +1,7 @@
+import {billingCatalog} from '../src/billing/catalog.js';
+import {annualBillingEnabled} from '../src/config/billing.js';
+import {rechargeCheckout} from '../src/billing/topups.js';
+import {financialAdmin} from '../src/billing/admin.js';
 import {memberTier,planTier,activeSubscription} from '../lib/plans.js';
 import {workspaceAssetAction} from '../lib/workspace-assets.js';
 import {enhancePrompt} from '../lib/prompt-enhancer.js';
@@ -89,6 +93,8 @@ async function removeAccount(u,password){
 }
 export default handler(async(req,res)=>{
  const action=req.query.action;
+ if(action==='health'){method(req,'GET');need(authReady(),503,'Service setup pending.');await rows('plans',{select:'id',limit:'1'});return res.json({ok:true,service:'loox-api'});}
+ if(action==='billing_catalog'){method(req,'GET');return res.json(await billingCatalog());}
  if(typeof action==='string'&&action.startsWith('asset_'))return workspaceAssetAction(req,res,action.slice(6));
  if(typeof action==='string'&&action.startsWith('community_'))return communityAction(req,res,action.slice(10));
  if(action==='r2_media')return r2MediaAction(req,res);
@@ -99,7 +105,7 @@ export default handler(async(req,res)=>{
   let plans=[],operations=[],localWorker=null;
   if(authReady())[plans,operations,localWorker]=await Promise.all([rows('plans',{select:'id,price_cents,credits,cadence'}),rows('operations',{select:'id,cost'}),rows('local_worker_health',{id:'eq.1',select:'modes,last_seen'}).then(x=>x[0]).catch(()=>null)]);
   const zImageOnline=Boolean(aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000);
-  return res.json({workspace:{assets:r2Ready(),promptEnhancer:Boolean(env.GEMINI_API_KEY)},auth:authReady(),ai:aiReady(),billing:billingReady(),checkoutPlans:billingReady()?checkoutPlans():[],r2Media:{configured:r2Ready(),imagesOnly:true},testBilling:env.LEMON_MODE==='test',plans:plans.filter(p=>p.id!=='lifetime'),operations,rewards:{credits:5,interval_hours:12,balance_cap:50},local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&(cloudflareImageReady()||localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000)),code:aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000?'B8':aiReady()&&cloudflareImageReady()?'A8':'--',referenceAvailable:Boolean(aiReady()&&localWorker?.modes?.includes('generate_reference')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations).map(m=>m.id==='z_image_turbo'?{...m,available:zImageOnline,status:zImageOnline?'available':'coming_soon',code:zImageOnline?'B8':null,reason:zImageOnline?'Ready to create.':'Coming soon.'}:m).concat([{id:'flux2_klein_local_edit',name:'FLUX.2 Klein 4B · Image Edit',provider:'LOOX Studio',description:'Precise reference-guided image editing',cost:operations.find(o=>o.id==='generate_flux2_klein_edit')?.cost??3,operation:'generate_flux2_klein_edit',available:Boolean(aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000?'available':'temporarily_unavailable',reason:'Select a reference image and enter an editing prompt. This editing mode may be temporarily unavailable.'}]),videoModels:videoCatalog(operations),faceSwap:{available:Boolean(env.LOOX_FACE_SWAP_LICENSED==='true'&&aiReady()&&localWorker?.modes?.includes('face_swap')&&Date.now()-Date.parse(localWorker.last_seen)<90000),cost:operations.find(o=>o.id==='face_swap')?.cost??6},
+  return res.json({workspace:{assets:r2Ready(),promptEnhancer:Boolean(env.GEMINI_API_KEY)},auth:authReady(),ai:aiReady(),billing:billingReady(),checkoutPlans:billingReady()?checkoutPlans():[],r2Media:{configured:r2Ready(),imagesOnly:true},testBilling:env.LEMON_MODE==='test',annualBillingEnabled:annualBillingEnabled(),plans:plans.filter(p=>p.id!=='lifetime'&&(annualBillingEnabled()||p.cadence!=='year')),operations,rewards:{credits:5,interval_hours:12,balance_cap:50},local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&(cloudflareImageReady()||localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000)),code:aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000?'B8':aiReady()&&cloudflareImageReady()?'A8':'--',referenceAvailable:Boolean(aiReady()&&localWorker?.modes?.includes('generate_reference')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations).map(m=>m.id==='z_image_turbo'?{...m,available:zImageOnline,status:zImageOnline?'available':'coming_soon',code:zImageOnline?'B8':null,reason:zImageOnline?'Ready to create.':'Coming soon.'}:m).concat([{id:'flux2_klein_local_edit',name:'FLUX.2 Klein 4B · Image Edit',provider:'LOOX Studio',description:'Precise reference-guided image editing',cost:operations.find(o=>o.id==='generate_flux2_klein_edit')?.cost??3,operation:'generate_flux2_klein_edit',available:Boolean(aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000?'available':'temporarily_unavailable',reason:'Select a reference image and enter an editing prompt. This editing mode may be temporarily unavailable.'}]),videoModels:videoCatalog(operations),faceSwap:{available:Boolean(env.LOOX_FACE_SWAP_LICENSED==='true'&&aiReady()&&localWorker?.modes?.includes('face_swap')&&Date.now()-Date.parse(localWorker.last_seen)<90000),cost:operations.find(o=>o.id==='face_swap')?.cost??6},
    ...(authReady()?{url:env.SUPABASE_URL,key:env.SUPABASE_PUBLISHABLE_KEY}:{})});
  }
  // Public, intentionally provider-neutral routing status for the image model picker.
@@ -119,6 +125,8 @@ export default handler(async(req,res)=>{
  const u=await authenticate(req);
  await limit(u,'api',100);
  await account(u);
+ if(['billing_admin','billing_alert_test','billing_reconcile'].includes(action))return financialAdmin(req,res,u);
+ if(action==='recharge_history'){method(req,'GET');return res.json({items:await rows('recharge_payments',{user_id:'eq.'+u.id,select:'reference,package_id,amount_cents,currency,status,credits,refunded_cents,created_at',order:'created_at.desc',limit:'100'})});}
  if(action==='enhance_prompt'){method(req,'POST');return res.json(await enhancePrompt(u,json(req)));}
  if(action==='reward'){method(req,'GET');return res.json(await rpc('reward',{p_user:u.id,p_fingerprint:mac('bonus:'+u.email.trim().toLowerCase()),p_claim:false}));}
  if(action==='account'){method(req,'GET');return res.json(await overview(u));}
@@ -187,6 +195,7 @@ export default handler(async(req,res)=>{
  if(action==='delete'){await limit(u,'delete',3,600);await removeAccount(u,b.password);return res.json({deleted:true});}
  const [profile]=await rows('profiles',{user_id:'eq.'+u.id,select:'deleting'});
  need(profile&&!profile.deleting,409,'Account deletion is in progress.');
+ if(action==='recharge_checkout'){await limit(u,'checkout',3,600);return res.json(await rechargeCheckout(u,b.package));}
  if(action==='checkout'){await limit(u,'checkout',3,600);return res.json(await checkout(u,b.plan));}
  if(action==='portal'){await limit(u,'portal',6);return res.json(await portal(u));}
  if(action==='profile'){

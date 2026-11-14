@@ -72,7 +72,7 @@ test('unconfigured service fails closed and unapproved origins are rejected',asy
 test('configured boundary requires identity, owner filter and an authentic billing signature',async t=>{
  const u=randomUUID();Object.assign(process.env,{SUPABASE_URL:'https://project.invalid',SUPABASE_SERVICE_ROLE_KEY:'test-server',SUPABASE_PUBLISHABLE_KEY:'test-public',LOOX_IDENTITY_SECRET:'test-identity',LEMON_MODE:'live',LEMON_STORE_ID:'42',LEMON_PRO_VARIANT:'1',LEMON_LIFETIME_VARIANT:'2',LEMON_API_KEY:'test-key',LEMON_WEBHOOK_SECRET:'test-signing'});
  const n=response();await api({method:'POST',query:{action:'job'},headers:{}},n);assert.equal(n.code,401);
- const calls=[];t.mock.method(globalThis,'fetch',async url=>{calls.push(String(url));return Response.json([]);});
+ const calls=[];t.mock.method(globalThis,'fetch',async url=>{calls.push(String(url));return Response.json(String(url).endsWith('loox_claim_payment_event')?true:[]);});
  await assert.rejects(status({id:u},randomUUID()),/not found/);assert.ok(calls[0].includes('user_id=eq.'+u));
  await assert.rejects(start({id:u},{}),/not configured/);
  const payload=Buffer.from(JSON.stringify({meta:{event_name:'order_created'},data:{id:'10',type:'orders',attributes:{store_id:42,test_mode:true}}}));

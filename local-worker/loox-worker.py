@@ -4,6 +4,8 @@ NEVER commit worker.env to GitHub.
 """
 import copy
 import hashlib
+import hmac
+import secrets
 import json
 import os
 import pathlib
@@ -52,8 +54,17 @@ def request(url, method="GET", data=None, headers=None, timeout=35):
         raise
 
 def backend(action, value):
-    return request(BACKEND + "/api/local-worker?action=" + action, "POST", value,
-                   {"Authorization": "Bearer " + SECRET}, 35)
+    if not BACKEND.startswith("https://"):
+        raise ValueError("LOOX backend must use HTTPS")
+    payload = json.dumps(value).encode()
+    timestamp = str(int(time.time()))
+    nonce = secrets.token_hex(16)
+    message = "\n".join(["POST", action, timestamp, nonce, hashlib.sha256(payload).hexdigest()])
+    signature = hmac.new(SECRET.encode(), message.encode(), hashlib.sha256).hexdigest()
+    return request(BACKEND + "/api/local-worker?action=" + action, "POST", payload,
+                   {"Authorization": "Bearer " + SECRET, "Content-Type": "application/json",
+                    "X-LOOX-Timestamp": timestamp, "X-LOOX-Nonce": nonce,
+                    "X-LOOX-Signature": signature}, 35)
 
 def dimensions(ratio):
     return {"1:1": (1024, 1024), "16:9": (1024, 576),

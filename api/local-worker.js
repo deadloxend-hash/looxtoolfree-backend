@@ -1,6 +1,9 @@
-import {env,need,handler,method,json,rows,rpc,supa,equal,mac,uuid,Problem} from '../lib/core.js';
+import {verifyWorkerSignature} from '../src/security/worker-signature.js';
+import {env,need,handler,method,json,rows,rpc,supa,equal,mac,uuid,Problem,raw} from '../lib/core.js';
 import {userKey,verifyUploadedMedia} from '../lib/media-store.js';
 import {getR2Object,presignR2Object} from '../lib/r2.js';
+
+export const config={api:{bodyParser:false}};
 
 // This service never listens on the user's PC. The Windows worker polls over outbound HTTPS.
 function authorized(req){
@@ -25,7 +28,9 @@ export default handler(async(req,res)=>{
   }
   authorized(req);
   method(req,'POST');
-  const b=json(req);
+  const bytes=await raw(req,32000);
+  await verifyWorkerSignature(req,bytes);
+  req.body=bytes.toString('utf8');const b=json(req);
   const action=req.query.action;
   if(action==='ping'){
     const supported=modes(b.modes);

@@ -2,3 +2,7 @@ node_modules/
 .env*
 !.env.example
 .vercel/
+
+supabase/.temp/
+
+__pycache__/
