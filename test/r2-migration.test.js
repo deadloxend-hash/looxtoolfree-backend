@@ -58,14 +58,14 @@ test('R2 uploads use accepted keys and admin-only template purpose',()=>{
  const gateway=readFileSync(new URL('../lib/r2-media.js',import.meta.url),'utf8');
  assert.match(gateway,/userKey\(user.id,'community',id,'image\/webp'\)/);
  assert.match(gateway,/public\/templates\//);
- assert.match(gateway,/loox_template_admin===true/);
+ assert.match(gateway,/await requireAdmin\(req,user,'admin-media',60\)/);
  assert.match(gateway,/makeThumbnail\(bytes\)/);
 });
 
 test('R2 template videos require admin, size, checksum and a scoped private upload',()=>{
  const gateway=readFileSync(new URL('../lib/r2-media.js',import.meta.url),'utf8');
  assert.match(gateway,/template_video_prepare/);
- assert.match(gateway,/loox_template_admin===true/);
+ assert.match(gateway,/await requireAdmin\(req,user,'admin-media',60\)/);
  assert.match(gateway,/presignR2Object\('PUT',path/);
  assert.match(gateway,/info.sha256===sha256/);
 });

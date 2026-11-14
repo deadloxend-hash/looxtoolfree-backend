@@ -45,7 +45,15 @@ async function user(request,env,required=true){
  if(!r.ok){if(required)bad(401,'Please sign in again.');return null;}
  const u=await r.json();
  if(!validId(u.id)||u.is_anonymous||!u.email_confirmed_at)bad(403,'Verify your account.');
- return {id:u.id,data:u};
+ let claims;try{const payload=auth.slice(7).split('.')[1].replaceAll('-','+').replaceAll('_','/');claims=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload),c=>c.charCodeAt(0))));}catch{bad(401,'Invalid session token.');}
+ if(claims.sub!==u.id||claims.iss!==env.SUPABASE_URL.replace(/\/$/,'')+'/auth/v1'||!(claims.aud==='authenticated'||Array.isArray(claims.aud)&&claims.aud.includes('authenticated'))||!Number.isFinite(claims.exp)||claims.exp<=Date.now()/1000||claims.nbf&&claims.nbf>Date.now()/1000)bad(401,'Please sign in again.');
+ return {id:u.id,data:u,claims};
+}
+const adminAllowed=me=>me?.data?.app_metadata?.loox_template_admin===true&&me?.claims?.aal==='aal2'&&me.claims.exp>Date.now()/1000;
+async function requireAdmin(db,me){
+ if(me?.data?.app_metadata?.loox_template_admin!==true)bad(403,'Administrator access required.');
+ if(!adminAllowed(me))bad(403,'Verify an authenticator code in Account Settings to access administration.');
+ await limitActions(db,me.id,'admin',60);
 }
 async function ensureSelf(db,me){
  if(!me)bad(401,'Sign in to continue.');
@@ -141,7 +149,7 @@ async function profileBatch(db,url,me){
  const ids=[...new Set(String(url.searchParams.get('ids')||'').split(',').filter(validId))].slice(0,30);
  if(!ids.length)return {profiles:[]};
  const placeholders=ids.map(()=>'?').join(',');
- const rows=await stmt(db,'SELECT user_id,username,display_name,avatar_path,bio,is_private FROM profiles WHERE user_id IN ('+placeholders+') AND (is_private=0 OR user_id=? OR ?=1)',...ids,me?.id||'',me?.data?.app_metadata?.loox_template_admin===true?1:0).all();
+ const rows=await stmt(db,'SELECT user_id,username,display_name,avatar_path,bio,is_private FROM profiles WHERE user_id IN ('+placeholders+') AND (is_private=0 OR user_id=? OR ?=1)',...ids,me?.id||'',adminAllowed(me)?1:0).all();
  return {profiles:rows.results};
 }
 async function pinSave(db,me,p){
@@ -345,7 +353,7 @@ async function publish(db,env,request,me,data){
  return {id,status:'pending'};
 }
 async function adminStats(db,me){
- if(me?.data?.app_metadata?.loox_template_admin!==true)bad(403,'Administrator access required.');
+ await requireAdmin(db,me);
  const counts=await stmt(db,
   'SELECT (SELECT COUNT(*) FROM profiles) creators,'+
   '(SELECT COUNT(*) FROM posts) posts,'+
@@ -361,12 +369,12 @@ async function adminStats(db,me){
  return {storage:'cloudflare-d1',...counts};
 }
 async function reviewQueue(db,me){
- if(me?.data?.app_metadata?.loox_template_admin!==true)bad(403,'Administrator access required.');
+ await requireAdmin(db,me);
  const rows=await stmt(db,"SELECT p.id,p.creator_id,p.caption,p.shared_prompt,p.media_type,p.media_key,p.thumbnail_key,p.created_at,c.username,c.display_name FROM posts p LEFT JOIN profiles c ON c.user_id=p.creator_id WHERE p.status='pending' ORDER BY p.created_at ASC LIMIT 100").all();
  return {items:rows.results};
 }
 async function reviewPost(db,me,data){
- if(me?.data?.app_metadata?.loox_template_admin!==true)bad(403,'Administrator access required.');
+ await requireAdmin(db,me);
  const id=needId(data.id),decision=String(data.status||'');
  if(!['approved','rejected'].includes(decision))bad(400,'Invalid review decision.');
  const existing=await stmt(db,"SELECT id,creator_id,media_key FROM posts WHERE id=? AND status='pending'",id).first();
@@ -489,7 +497,7 @@ async function readMedia(db,r2,url,me,request){
  if(type==='post'){
   const post=await stmt(db,"SELECT p.id,p.creator_id,p.media_type,p.media_key,p.thumbnail_key,p.status,p.visible,c.is_private FROM posts p JOIN profiles c ON c.user_id=p.creator_id WHERE p.id=?",id).first();
   if(!post)bad(404,'Post media unavailable.');
-  const owner=me?.id===post.creator_id,admin=me?.data?.app_metadata?.loox_template_admin===true;
+  const owner=me?.id===post.creator_id,admin=adminAllowed(me);
   if(!owner&&!admin&&(post.status!=='approved'||!post.visible||post.is_private))bad(404,'Post media unavailable.');
   key=url.searchParams.get('variant')==='original'?post.media_key:post.thumbnail_key||post.media_key;
   if(!key||!key.startsWith('users/'+post.creator_id+'/generations/')&&!key.startsWith('users/'+post.creator_id+'/thumbnails/'))bad(404,'Post media unavailable.');

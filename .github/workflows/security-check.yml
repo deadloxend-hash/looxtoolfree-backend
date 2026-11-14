@@ -15,11 +15,12 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+          fetch-depth: 0
       - name: Install locked dependencies
         run: npm ci --ignore-scripts
       - name: Dependency vulnerability audit
         run: npm audit --audit-level=moderate
       - name: Secret-pattern scan (values redacted)
-        run: node scripts/security-scan.mjs
+        run: node scripts/security-scan.mjs --history
       - name: Security and regression tests
         run: npm test
