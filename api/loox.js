@@ -1,3 +1,4 @@
+import controlAction from '../lib/control-center.js';
 import {applyModelHealth} from '../src/generation/model-health.js';
 import {billingCatalog} from '../src/billing/catalog.js';
 import {annualBillingEnabled} from '../src/config/billing.js';
@@ -94,6 +95,7 @@ async function removeAccount(u,password){
 }
 export default handler(async(req,res)=>{
  const action=req.query.action;
+ if(typeof action==='string'&&action.startsWith('control_')){req.query.action=action.slice(8);return controlAction(req,res);}
  if(action==='health'){method(req,'GET');need(authReady(),503,'Service setup pending.');await rows('plans',{select:'id',limit:'1'});return res.json({ok:true,service:'loox-api'});}
  if(action==='billing_catalog'){method(req,'GET');return res.json(await billingCatalog());}
  if(typeof action==='string'&&action.startsWith('asset_'))return workspaceAssetAction(req,res,action.slice(6));
