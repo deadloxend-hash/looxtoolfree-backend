@@ -16,7 +16,7 @@ function setup({online=false,cloudReady=true,reference=false,failCloud=false}={}
  const need=(yes,status,message)=>{if(!yes)throw new Problem(status,message)};
  const heartbeat={modes:online?['generate','generate_reference']:[],last_seen:online?new Date().toISOString():'2020-01-01T00:00:00Z'};
  const context={
-  Buffer,URL,Date,AbortSignal,Problem,need,
+  Buffer,URL,URLSearchParams,Date,AbortSignal,Problem,need,
   env:{LOOX_DAILY_BUDGET_MILLICENTS:'100000',LOOX_WORKER_SECRET:'test'},
   uuid:{test:()=>true},mac:s=>'digest:'+s,aiReady:()=>true,
   cloudflareImageReady:()=>cloudReady,CLOUDFLARE_FLUX_DAILY_CAP:100,
