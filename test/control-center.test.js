@@ -25,6 +25,6 @@ test('Control Center preserves records, enforces roles, isolates support notes, 
  assert.deepEqual((await db.query('select disabled_operations from loox_cost_controls')).rows[0].disabled_operations,['generate']);
  const overview=(await db.query("select loox_control_overview(now()-interval '7 days',now()) as data")).rows[0].data;assert.equal(overview.registered_users,3);assert.equal(overview.open_tickets,1);
  const search=(await db.query("select loox_control_users('customer',1,'','') as data")).rows[0].data;assert.equal(search.total,1);assert.equal(search.items[0].id,member);
- await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from loox_admin_audit')).rows[0].n,3);
+ await db.exec('reset role');assert.equal((await db.query('select count(*)::int n from loox_admin_audit')).rows[0].n,3);await db.query('delete from auth.users where id=$1',[member]);assert.equal((await db.query('select count(*)::int n from loox_support_tickets')).rows[0].n,0);assert.equal((await db.query('select count(*)::int n from loox_admin_audit')).rows[0].n,3);
  }finally{await db.close();}
 });

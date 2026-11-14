@@ -189,3 +189,18 @@ end$$;
 revoke all on function loox_private.audit_immutable(),public.loox_control_permission(uuid,text),public.loox_control_session(uuid,uuid),public.loox_control_users(text,integer,text,text),public.loox_control_overview(timestamptz,timestamptz),public.loox_control_mutate(uuid,text,text,text,uuid,jsonb),public.loox_support_create(uuid,text,text,text,text,uuid) from public,anon,authenticated;
 grant execute on function public.loox_control_permission(uuid,text),public.loox_control_session(uuid,uuid),public.loox_control_users(text,integer,text,text),public.loox_control_overview(timestamptz,timestamptz),public.loox_control_mutate(uuid,text,text,text,uuid,jsonb),public.loox_support_create(uuid,text,text,text,text,uuid) to service_role;
 commit;
+begin;
+-- Keep the pre-existing customer account deletion workflow working after tickets exist.
+-- These foreign-key changes do not delete or alter any existing customer record.
+alter table public.loox_support_messages drop constraint loox_support_messages_ticket_id_fkey,
+ add constraint loox_support_messages_ticket_id_fkey foreign key(ticket_id) references public.loox_support_tickets(id) on delete cascade;
+alter table public.loox_support_messages alter column author drop not null;
+alter table public.loox_support_messages drop constraint loox_support_messages_author_fkey,
+ add constraint loox_support_messages_author_fkey foreign key(author) references auth.users(id) on delete set null;
+alter table public.loox_support_tickets drop constraint loox_support_tickets_user_id_fkey,
+ add constraint loox_support_tickets_user_id_fkey foreign key(user_id) references auth.users(id) on delete cascade;
+alter table public.loox_support_tickets drop constraint loox_support_tickets_assigned_to_fkey,
+ add constraint loox_support_tickets_assigned_to_fkey foreign key(assigned_to) references auth.users(id) on delete set null;
+alter table public.loox_account_restrictions drop constraint loox_account_restrictions_user_id_fkey,
+ add constraint loox_account_restrictions_user_id_fkey foreign key(user_id) references auth.users(id) on delete cascade;
+commit;
