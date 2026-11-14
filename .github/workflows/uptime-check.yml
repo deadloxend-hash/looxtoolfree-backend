@@ -1,5 +1,7 @@
 name: LOOX external availability check
 on:
+  push:
+    paths: [".github/workflows/uptime-check.yml"]
   schedule:
     - cron: '7,37 * * * *'
   workflow_dispatch:

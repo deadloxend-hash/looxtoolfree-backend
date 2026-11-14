@@ -22,6 +22,7 @@ test('recharge ledger: concurrent replay, ownership, partial/full refund, refund
  await db.exec(await readFile(new URL('../supabase/platform.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../supabase/migrations/20261114033906_billing_security_foundation.sql',import.meta.url),'utf8'));
  await db.exec(await readFile(new URL('../supabase/migrations/20261114034903_billing_health_monitoring.sql',import.meta.url),'utf8'));
+ await db.exec(await readFile(new URL('../supabase/migrations/20261114040822_proportional_subscription_refunds.sql',import.meta.url),'utf8'));
  const u=randomUUID(),v=randomUUID(),q=(s,a=[])=>db.query(s,a),balance=async()=>Number((await q('select balance from loox_wallets where user_id=$1',[u])).rows[0].balance);
  await q('insert into auth.users values($1),($2)',[u,v]);for(const id of [u,v])await q("select loox_account($1::uuid,'Test',$1::text,'2026-11')",[id]);
  const settle=(ref,refund=0,id=u)=>q("select loox_recharge_settle($1,$2,'mini',100,500,$3,false)",[id,ref,refund]);
@@ -31,6 +32,13 @@ test('recharge ledger: concurrent replay, ownership, partial/full refund, refund
  await settle('orders/1',500);assert.equal(await balance(),10);await settle('orders/1');assert.equal(await balance(),10);
  await settle('orders/2',500);assert.equal(await balance(),10);await settle('orders/2');assert.equal(await balance(),10);
  await settle('orders/3');await q('update loox_wallets set balance=0 where user_id=$1',[u]);await settle('orders/3',500);assert.equal(await balance(),0);assert.equal((await q('select debt from loox_wallets where user_id=$1',[u])).rows[0].debt,100);
+ const invoice=(ref,refund=0,id=u)=>q("select loox_invoice_settle($1,'pro',$2,1000,$3,'paid',now())",[id,ref,refund]);
+ const before=await balance();await Promise.all([invoice('subscription-invoices/81'),invoice('subscription-invoices/81')]);assert.equal(await balance(),before+0); // existing refund debt consumes the allowance
+ await invoice('subscription-invoices/81',250);assert.equal((await q('select debt from loox_wallets where user_id=$1',[u])).rows[0].debt,25);
+ await invoice('subscription-invoices/81',1000);assert.equal((await q('select debt from loox_wallets where user_id=$1',[u])).rows[0].debt,100);
+ await invoice('subscription-invoices/81');assert.equal((await q('select debt from loox_wallets where user_id=$1',[u])).rows[0].debt,100);
+ await assert.rejects(invoice('subscription-invoices/81',0,v),/invalid_payment/);
+ await invoice('subscription-invoices/82',1000);assert.equal((await q('select debt from loox_wallets where user_id=$1',[u])).rows[0].debt,100);
  const event=()=>q("select loox_claim_payment_event('digest','order_created','orders/1') as claimed");assert.equal((await event()).rows[0].claimed,true);assert.equal((await event()).rows[0].claimed,false);
  await q("update loox_payment_events set status='failed'");assert.equal((await event()).rows[0].claimed,true);
  await q("select loox_security_incident('key','simulated','high','monitoring')");await q("select loox_security_incident('key','simulated','high','monitoring')");assert.equal((await q('select occurrences from loox_security_alerts')).rows[0].occurrences,2);
