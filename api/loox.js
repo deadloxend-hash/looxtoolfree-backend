@@ -1,3 +1,4 @@
+import {workflowCatalog,runWorkflow} from '../lib/workflows.js';
 import controlAction from '../lib/control-center.js';
 import {applyModelHealth} from '../src/generation/model-health.js';
 import {billingCatalog} from '../src/billing/catalog.js';
@@ -103,6 +104,7 @@ export default handler(async(req,res)=>{
  if(action==='r2_media')return r2MediaAction(req,res);
  if(typeof action==='string'&&action.startsWith('chat_attachment_'))return chatAttachmentAction(req,res,action.slice('chat_attachment_'.length));
  if(typeof action==='string'&&action.startsWith('template_'))return templateAction(req,res,action.slice(9));
+ if(action==='workflow_catalog'){method(req,'GET');return res.json(workflowCatalog());}
  if(action==='config'){
   method(req,'GET');
   let plans=[],operations=[],localWorker=null;
@@ -178,6 +180,7 @@ export default handler(async(req,res)=>{
  if(action==='status'){method(req,'GET');const [j]=await rows('jobs',{id:'eq.'+req.query.id,user_id:'eq.'+u.id,select:'operation'});return res.json(j&&cloudVideoOperations.includes(j.operation)?await cloudVideoStatus(u,req.query.id):await status(u,req.query.id));}
  method(req,'POST');const b=json(req);
  if(action==='claim_reward'){await limit(u,'reward',4,60);const ip=String(req.headers['x-vercel-forwarded-for']||'').split(',')[0].trim();if(ip)await limit({id:mac('return-ip:'+ip)},'reward-network',20,86400);return res.json(await rpc('reward',{p_user:u.id,p_fingerprint:mac('bonus:'+u.email.trim().toLowerCase()),p_claim:true}));}
+ if(action==='workflow_run'){await limit(u,'submit',8);return res.status(202).json(await runWorkflow(u,b));}
  if(action==='video_quote'){await limit(u,'video_quote',60);return res.json(videoQuote(u,b,await rows('operations',{select:'id,cost'})));}
  if(action==='job'){await limit(u,'submit',8);return res.status(202).json(await start(u,b));}
  if(action==='cloud_job'){await limit(u,'submit',8);return res.status(202).json(await cloudJob(u,b));}
