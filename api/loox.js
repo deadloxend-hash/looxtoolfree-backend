@@ -1,3 +1,4 @@
+import {verifyExportPassword,collectAccountRecords} from '../lib/account-export.js';
 import {workflowCatalog,runWorkflow} from '../lib/workflows.js';
 import controlAction from '../lib/control-center.js';
 import {applyModelHealth} from '../src/generation/model-health.js';
@@ -137,6 +138,7 @@ export default handler(async(req,res)=>{
  if(action==='enhance_prompt'){method(req,'POST');return res.json(await enhancePrompt(u,json(req)));}
  if(action==='reward'){method(req,'GET');return res.json(await rpc('reward',{p_user:u.id,p_fingerprint:mac('bonus:'+u.email.trim().toLowerCase()),p_claim:false}));}
  if(action==='account'){method(req,'GET');return res.json(await overview(u));}
+ if(action==='export_account'){method(req,'POST');await limit(u,'export_account',3,600);const body=json(req);await verifyExportPassword(u,body.password,req.looxAuthClaims);return res.json(await collectAccountRecords(u));}
  if(action==='gpu'){
   method(req,'GET');
   const [worker]=await rows('local_worker_health',{id:'eq.1',select:'modes,last_seen'});
