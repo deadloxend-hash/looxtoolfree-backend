@@ -13,6 +13,8 @@ export default handler(async(req,res)=>{
  const cron=env.CRON_SECRET&&equal(authorization,'Bearer '+env.CRON_SECRET);
  need(cron,401,'Unauthorized.');
  if(req.query.action==='r2_migrate')return res.json(await migrateMediaBatch(Number(req.query.limit||8)));
+ // Only short-lived proof hashes created by the privacy workflow, never user content.
+ await supa('/rest/v1/loox_privacy_proofs?expires_at=lt.'+encodeURIComponent(new Date(Date.now()-86400000).toISOString()),{method:'DELETE'});
  await monitorBilling();
  await deliverAlerts();
  await rpc('local_expire',{});

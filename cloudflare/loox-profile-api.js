@@ -542,21 +542,22 @@ function imageType(bytes,type){
  if(type==='image/webp')return bytes.length>12&&String.fromCharCode(...bytes.subarray(0,4))==='RIFF'&&String.fromCharCode(...bytes.subarray(8,12))==='WEBP';
  return false;
 }
-async function upload(db,r2,request,me,kind){
+async function upload(db,r2,request,me,kind,env){
  await ensureSelf(db,me);
  const type=(request.headers.get('Content-Type')||'').split(';')[0].trim().toLowerCase();
  if(!['image/png','image/jpeg','image/webp'].includes(type))bad(415,'Choose a PNG, JPG or WebP.');
  const max=kind==='avatar'?2097152:4000000;
  if(Number(request.headers.get('Content-Length')||0)>max)bad(413,'Image exceeds upload limit.');
- const payload=await request.arrayBuffer();
- if(!payload.byteLength||payload.byteLength>max)bad(413,'Image exceeds upload limit.');
- const bytes=new Uint8Array(payload);
+ const bytes=await limitedBody(request,max);
+ if(!bytes.byteLength)bad(400,'Choose an image.');
  if(!imageType(bytes,type))bad(400,'Invalid image signature.');
  const hourly=await stmt(db,'SELECT COUNT(*) n FROM image_uploads WHERE user_id=? AND created_at>=?',me.id,new Date(Date.now()-3600000).toISOString()).first();
  if(Number(hourly.n)>=8)bad(429,'Profile image uploads limited. Try again later.');
  const key='public/avatars/'+me.id+'/'+(kind==='cover'?'banner-':'')+crypto.randomUUID()+'.'+({ 'image/webp':'webp','image/png':'png','image/jpeg':'jpg' }[type]);
+ await assertWritableAccount(db,me.id);await user(request,env);
  await r2.put(key,bytes,{httpMetadata:{contentType:type}});
  try{
+  await assertWritableAccount(db,me.id);await user(request,env);
   if(kind==='cover')await stmt(db,'UPDATE profiles SET cover_key=? WHERE user_id=?',key,me.id).run();
   else{
    const path=me.id+'/'+key.split('/').pop();
@@ -572,7 +573,114 @@ async function removeMedia(db,me,kind){
  else await stmt(db,'UPDATE profiles SET avatar_key=NULL,avatar_path=NULL,avatar_thumbnail_key=NULL WHERE user_id=?',me.id).run();
  return {saved:true};
 }
+async function limitedBody(request,max){
+ const reader=request.body?.getReader();let size=0;const chunks=[];
+ if(reader)for(;;){const item=await reader.read();if(item.done)break;size+=item.value.byteLength;if(size>max){await reader.cancel();bad(413,'Request exceeds the supported size.');}chunks.push(item.value);}
+ const data=new Uint8Array(size);let offset=0;for(const part of chunks){data.set(part,offset);offset+=part.length;}return data;
+}
+async function assertWritableAccount(db,id){
+ if(await stmt(db,'SELECT user_id FROM account_lifecycle WHERE user_id=?',id).first())bad(409,'Account deletion is in progress.');
+}
+// Account privacy operations. Every key is scoped to the authenticated account.
+export const privacyExportQueries={
+ profile:'SELECT * FROM profiles WHERE user_id=? ORDER BY rowid LIMIT ? OFFSET ?',
+ display_names:'SELECT * FROM account_display_names WHERE user_id=? ORDER BY rowid LIMIT ? OFFSET ?',
+ posts:'SELECT * FROM posts WHERE creator_id=? ORDER BY rowid LIMIT ? OFFSET ?',
+ collections:'SELECT * FROM collections WHERE user_id=? ORDER BY rowid LIMIT ? OFFSET ?',
+ collection_items:'SELECT i.* FROM collection_items i JOIN collections c ON c.id=i.collection_id WHERE c.user_id=? ORDER BY i.rowid LIMIT ? OFFSET ?',
+ comments:'SELECT * FROM comments WHERE user_id=? ORDER BY rowid LIMIT ? OFFSET ?',
+ likes:'SELECT * FROM post_likes WHERE user_id=? ORDER BY rowid LIMIT ? OFFSET ?',
+ saved_posts:'SELECT * FROM saved_posts WHERE user_id=? ORDER BY rowid LIMIT ? OFFSET ?',
+ notifications:'SELECT * FROM notifications WHERE user_id=? ORDER BY rowid LIMIT ? OFFSET ?',
+ following:'SELECT * FROM follows WHERE follower_id=? ORDER BY rowid LIMIT ? OFFSET ?',
+ followers:'SELECT * FROM follows WHERE creator_id=? ORDER BY rowid LIMIT ? OFFSET ?'
+};
+export async function accountExport(db,r2,id){
+ needId(id);const records={};let bytes=0,queries=0;
+ for(const [name,sql] of Object.entries(privacyExportQueries)){
+  records[name]=[];let offset=0;
+  for(;;){
+   if(++queries>40)bad(413,'Request a larger export through Support.');
+   const page=await stmt(db,sql,id,250,offset).all(),items=page.results||[];
+   if(!items.length)break;records[name].push(...items);offset+=items.length;bytes+=JSON.stringify(items).length;
+   if(offset>10000||bytes>1500000)bad(413,'Request a larger export through Support.');
+  }
+ }
+ const media=[];
+ for(const prefix of ['users/'+id+'/','public/avatars/'+id+'/']){
+  let cursor;
+  do{
+   if(++queries>40)bad(413,'Request a larger export through Support.');
+   const page=await r2.list({prefix,limit:250,cursor,include:['httpMetadata']});
+   for(const object of page.objects){
+    if(!object.key.startsWith(prefix)||object.key.includes('..'))bad(503,'Storage inventory could not be verified.');
+    media.push({key:object.key,bytes:object.size,content_type:object.httpMetadata?.contentType||null,uploaded_at:object.uploaded?.toISOString?.()||null});
+   }
+   if(media.length>10000)bad(413,'Request a larger media export through Support.');
+   cursor=page.truncated?page.cursor:undefined;
+   if(page.truncated&&!cursor)bad(503,'Storage pagination is unavailable.');
+  }while(cursor);
+ }
+ return {records,media};
+}
+export const deletionStatements=[
+ 'DELETE FROM collection_items WHERE collection_id IN(SELECT id FROM collections WHERE user_id=?) OR post_id IN(SELECT id FROM posts WHERE creator_id=?)',
+ 'DELETE FROM post_likes WHERE user_id=? OR post_id IN(SELECT id FROM posts WHERE creator_id=?)',
+ 'DELETE FROM saved_posts WHERE user_id=? OR post_id IN(SELECT id FROM posts WHERE creator_id=?)',
+ 'DELETE FROM notifications WHERE user_id=? OR actor_id=? OR post_id IN(SELECT id FROM posts WHERE creator_id=?)',
+ 'UPDATE comments SET parent_id=NULL WHERE parent_id IN(SELECT id FROM comments WHERE user_id=?) AND user_id<>? AND post_id NOT IN(SELECT id FROM posts WHERE creator_id=?)',
+ 'DELETE FROM comments WHERE user_id=? OR post_id IN(SELECT id FROM posts WHERE creator_id=?)',
+ 'DELETE FROM collections WHERE user_id=?',
+ 'DELETE FROM posts WHERE creator_id=?',
+ 'DELETE FROM follows WHERE follower_id=? OR creator_id=?',
+ 'DELETE FROM profiles WHERE user_id=?',
+ 'DELETE FROM account_display_names WHERE user_id=?',
+ 'DELETE FROM image_uploads WHERE user_id=?',
+ 'DELETE FROM action_windows WHERE user_id=?'
+];
+export async function accountCleanup(db,r2,id,{maxPages=5}={}){
+ needId(id);
+ // A temporary marker prevents profile recreation and writes during retries.
+ await stmt(db,'INSERT INTO account_lifecycle(user_id,expires_at) VALUES(?,?) ON CONFLICT(user_id) DO UPDATE SET expires_at=excluded.expires_at',id,Math.floor(Date.now()/1000)+86400).run();
+ await db.batch([stmt(db,'UPDATE profiles SET is_private=1 WHERE user_id=?',id),stmt(db,'UPDATE posts SET visible=0 WHERE creator_id=?',id)]);
+ let removed=0;
+ for(const prefix of ['users/'+id+'/','public/avatars/'+id+'/']){
+  let empty=false;
+  for(let page=0;page<maxPages;page++){
+   const listed=await r2.list({prefix,limit:100});
+   const keys=listed.objects.map(o=>o.key);
+   if(keys.some(key=>!key.startsWith(prefix)||key.includes('..')))bad(503,'Storage ownership verification failed.');
+   if(!keys.length){empty=true;break;}
+   await r2.delete(keys);removed+=keys.length;
+  }
+  if(!empty&&(await r2.list({prefix,limit:1})).objects.length)return {complete:false,removed_files:removed};
+ }
+ await db.batch(deletionStatements.map(sql=>stmt(db,sql,...Array((sql.match(/\?/g)||[]).length).fill(id))));
+ return {complete:true,removed_files:removed};
+}
+async function consumePrivacyProof(env,request,me){
+ const contentLength=Number(request.headers.get('Content-Length')||0);
+ if(contentLength>2048)bad(413,'Privacy request is too large.');
+ const bytes=await limitedBody(request,2048);
+ let data;try{data=JSON.parse(new TextDecoder().decode(bytes));}catch{bad(400,'Invalid privacy request.');}
+ if(typeof data?.proof!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(data.proof))bad(403,'Verify your password before exporting.');
+ const response=await fetch(env.SUPABASE_URL+'/rest/v1/rpc/loox_consume_privacy_proof',{
+  method:'POST',headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,Authorization:request.headers.get('Authorization'),'Content-Type':'application/json'},
+  body:JSON.stringify({p_token:data.proof}),redirect:'error',signal:AbortSignal.timeout(10000)
+ });
+ if(!response.ok||await response.json()!==true)bad(403,'Export approval expired or was already used. Verify your password again.');
+}
+async function approvedDeletion(env,request,me){
+ const response=await fetch(env.SUPABASE_URL+'/rest/v1/loox_profiles?'+new URLSearchParams({user_id:'eq.'+me.id,select:'deleting',limit:'1'}),{
+  headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,Authorization:request.headers.get('Authorization')},redirect:'error',signal:AbortSignal.timeout(10000)
+ });
+ const data=response.ok?await response.json():null;
+ if(data?.[0]?.deleting!==true)bad(403,'Confirm account deletion through LOOX Settings first.');
+}
+
 export default {
+ // Keep minimal deletion markers to prevent late requests recreating removed records.
+ async scheduled(event,env){await stmt(env.DB,"DELETE FROM action_windows WHERE user_id IN (SELECT 'privacy-delete:'||user_id FROM account_lifecycle WHERE expires_at<?)",Math.floor(Date.now()/1000)).run();},
  async fetch(request,env){
   try{
    const url=new URL(request.url),path=url.pathname.replace(/^\/v1\/?/,'');
@@ -581,10 +689,22 @@ export default {
     return new Response(null,{status:204,headers:{'Access-Control-Allow-Origin':ORIGIN,'Access-Control-Allow-Methods':'GET,POST,PATCH,DELETE,OPTIONS','Access-Control-Allow-Headers':'Authorization,Content-Type','Access-Control-Max-Age':'600'}});
    }
    if(request.headers.has('Origin')&&request.headers.get('Origin')!==ORIGIN)bad(403,'Origin is not allowed.');
-   if(path==='health'&&request.method==='GET')return cors(request,send({ok:true,storage:'cloudflare-d1-r2',version:1}));
+   if(path==='health'&&request.method==='GET')return cors(request,send({ok:true,storage:'cloudflare-d1-r2',version:2,privacy:{export:true,cleanup:true}}));
    const anonymous=['profile','connections','profiles','feed','replies','media','discover','post','comments','collections'].includes(path)&&request.method==='GET';
    const me=await user(request,env,!anonymous);
+   if(me&&path!=='account-delete'){
+    const blocked=await stmt(env.DB,'SELECT user_id FROM account_lifecycle WHERE user_id=?',me.id).first();
+    if(blocked)bad(409,'Account deletion is in progress. Return to Settings to continue cleanup.');
+   }
    let response;
+   if(path==='account-export'&&request.method==='POST'){
+    await limitActions(env.DB,me.id,'privacy_export',3);await consumePrivacyProof(env,request,me);
+    return cors(request,send(await accountExport(env.DB,env.MEDIA,me.id)));
+   }
+   if(path==='account-delete'&&request.method==='DELETE'){
+    await limitActions(env.DB,'privacy-delete:'+me.id,'cleanup',3);await approvedDeletion(env,request,me);await consumePrivacyProof(env,request,me);
+    return cors(request,send(await accountCleanup(env.DB,env.MEDIA,me.id)));
+   }
    if(path==='profile'&&request.method==='GET')response=send(await profileGet(env.DB,url,me));
    else if(path==='profile'&&request.method==='PATCH')response=send(await profileSave(env.DB,me,await request.json()));
    else if(path==='privacy'&&request.method==='PATCH')response=send(await privacySave(env.DB,me,await request.json()));
@@ -617,7 +737,7 @@ export default {
    else if(path==='notifications'&&request.method==='GET')response=send(await notifications(env.DB,url,me));
    else if(path==='notifications'&&request.method==='PATCH')response=send(await markNotifications(env.DB,me,await request.json()));
    else if(path==='media'&&request.method==='GET')response=await readMedia(env.DB,env.MEDIA,url,me,request);
-   else if(['avatar','cover'].includes(path)&&request.method==='POST')response=send(await upload(env.DB,env.MEDIA,request,me,path),201);
+   else if(['avatar','cover'].includes(path)&&request.method==='POST')response=send(await upload(env.DB,env.MEDIA,request,me,path,env),201);
    else if(['avatar','cover'].includes(path)&&request.method==='DELETE')response=send(await removeMedia(env.DB,me,path));
    else response=send({error:'Unknown creator API action.'},404);
    return cors(request,response);

@@ -7,7 +7,7 @@ test('account export filters every section by verified owner and messages by own
  const seen=[];
  const read=async(table,q)=>{seen.push([table,q]);assert.notEqual(q.select,'*');
   if(table==='chat_messages'){assert.equal(q.thread_id,'eq.'+T);assert.equal(q.user_id,undefined);return q.offset==='0'?[{id:'message',thread_id:T,content:'own conversation'}]:[];}
-  assert.equal(q.user_id,'eq.'+A);
+  if(table==='creator_follows')assert.ok(q.follower_id==='eq.'+A||q.creator_id==='eq.'+A);else assert.equal(q.user_id,'eq.'+A);
   if(table==='wallets')return [{balance:25,debt:0}];
   if(table==='chat_threads')return q.offset==='0'?[{id:T}]:[];
   if(table==='jobs')return q.offset==='0'?[{id:'job1'}]:q.offset==='1'?[{id:'job2'}]:[];
@@ -15,7 +15,7 @@ test('account export filters every section by verified owner and messages by own
  };
  const data=await collectAccountRecords(user,{read});
  assert.equal(data.account.id,A);assert.equal(data.records.jobs.length,2);assert.equal(data.records.chat_messages.length,1);
- assert.equal(Object.keys(data.records).length,Object.keys(exportSections).length+1);
+ assert.equal(Object.keys(data.records).length,Object.keys(exportSections).length+5);
  assert.ok(!JSON.stringify(data).includes('access_token'));
 });
 test('account export refuses oversized data instead of producing a partial download',async()=>{

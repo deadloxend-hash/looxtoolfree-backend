@@ -1,0 +1,43 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {PGlite} from '@electric-sql/pglite';
+import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+const A='00000000-0000-4000-8000-000000000001',B='00000000-0000-4000-8000-000000000002',SA='00000000-0000-4000-8000-000000000003',SB='00000000-0000-4000-8000-000000000004';
+const token='a'.repeat(43),hash=createHash('sha256').update(token).digest('hex');
+test('privacy proof ACLs, session binding, replay prevention, owner audit views and storage prefixes',async()=>{
+ const db=new PGlite();try{
+ await db.exec(`create schema auth;create schema storage;create schema loox_private;create role anon;create role authenticated;create role service_role bypassrls;
+ create function auth.uid() returns uuid language sql as $$select (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub')::uuid$$;
+ create function auth.jwt() returns jsonb language sql as $$select nullif(current_setting('request.jwt.claims',true),'')::jsonb$$;
+ create table auth.users(id uuid primary key);create table auth.sessions(id uuid primary key,user_id uuid,created_at timestamptz,refreshed_at timestamp,not_after timestamptz,user_agent text,aal text,refresh_token_hmac_key text);
+ create table auth.audit_log_entries(id uuid,payload json,created_at timestamptz);create table storage.objects(bucket_id text,name text,metadata jsonb,owner uuid,owner_id text);
+ create table public.loox_payments(user_id uuid);create table public.loox_recharge_payments(user_id uuid);create table public.loox_subscriptions(user_id uuid);create table public.loox_invoice_refunds(user_id uuid);create table public.loox_wallets(user_id uuid,debt integer);create table public.loox_admin_roles(user_id uuid);create table public.loox_admin_reads(user_id uuid);create table public.loox_moderation_log(admin_id uuid);create table public.loox_template_catalog(media_key text,thumbnail_key text,media_path text);
+ grant usage on schema public,auth,loox_private to authenticated,service_role;
+ insert into auth.users values('${A}'),('${B}');
+ insert into auth.sessions values('${SA}','${A}',now(),now(),null,'Owner browser','aal1','DO-NOT-EXPORT'),('${SB}','${B}',now(),now(),null,'Foreign browser','aal1','FOREIGN-SECRET');
+ insert into auth.audit_log_entries values('${SA}','{"actor_id":"${A}","action":"login","token":"SECRET"}',now()),('${SB}','{"actor_id":"${B}","action":"logout"}',now());
+ insert into storage.objects(bucket_id,name,metadata) values('loox-results','${A}/one.png','{"size":10,"mimetype":"image/png"}'),('loox-results','${B}/private.png','{"size":20}'),('loox-templates','${A}/public.png','{"size":30}');`);
+ await db.exec(await readFile(new URL('../supabase/review/privacy-lifecycle-foundation.sql',import.meta.url),'utf8'));
+ await db.query('select public.loox_issue_privacy_proof($1,$2,$3)',[A,SA,hash]);
+ const claims=(u,s)=>JSON.stringify({sub:u,role:'authenticated',session_id:s});
+ await db.query("select set_config('request.jwt.claims',$1,false)",[claims(B,SB)]);await db.exec('set role authenticated');
+ assert.equal((await db.query('select public.loox_consume_privacy_proof($1) as ok',[token])).rows[0].ok,false);
+ await assert.rejects(db.query('select * from public.loox_privacy_proofs'));
+ await assert.rejects(db.query('select public.loox_issue_privacy_proof($1,$2,$3)',[B,SB,hash]));
+ await assert.rejects(db.query('select public.loox_security_summary($1,$2)',[B,SB]));
+ await assert.rejects(db.query('select * from public.loox_account_storage_inventory($1)',[B]));
+ await db.query("select set_config('request.jwt.claims',$1,false)",[claims(A,SA)]);
+ assert.equal((await db.query('select public.loox_consume_privacy_proof($1) as ok',[token])).rows[0].ok,true);
+ assert.equal((await db.query('select public.loox_consume_privacy_proof($1) as ok',[token])).rows[0].ok,false);
+ await db.exec('reset role');
+ const security=(await db.query('select public.loox_security_summary($1,$2) as data',[A,SA])).rows[0].data;
+ assert.equal(security.deletion.requires_support,true);assert.equal(security.sessions.length,1);assert.equal(security.activity.length,1);assert.equal(security.sessions[0].current,true);assert.equal(security.activity[0].action,'login');assert.ok(!JSON.stringify(security).includes('SECRET'));
+ await assert.rejects(db.query('select public.loox_security_summary($1,$2)',[A,SB]),/privacy_session_missing/);
+ const files=(await db.query('select * from public.loox_account_storage_inventory($1)',[A])).rows;assert.equal(files.length,1);assert.equal(files[0].name,A+'/one.png');
+ const token2='b'.repeat(43);await db.query('select public.loox_issue_privacy_proof($1,$2,$3)',[A,SA,createHash('sha256').update(token2).digest('hex')]);
+ await db.query('delete from auth.sessions where id=$1',[SA]);
+ await db.query("select set_config('request.jwt.claims',$1,false)",[claims(A,SA)]);await db.exec('set role authenticated');
+ assert.equal((await db.query('select public.loox_consume_privacy_proof($1) as ok',[token2])).rows[0].ok,false);
+ }finally{await db.close();}
+});

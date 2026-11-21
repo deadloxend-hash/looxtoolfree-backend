@@ -1,4 +1,4 @@
-import {verifyExportPassword,collectAccountRecords} from '../lib/account-export.js';
+import {securitySummary,completeDataExport,deletePrivateAccount} from '../lib/privacy.js';
 import {workflowCatalog,runWorkflow} from '../lib/workflows.js';
 import controlAction from '../lib/control-center.js';
 import {applyModelHealth} from '../src/generation/model-health.js';
@@ -77,24 +77,6 @@ async function overview(u){
  const active=subscriptions.filter(s=>activeSubscription(s)),tier=active.some(s=>s.plan.startsWith('business'))?'business':active.some(s=>planTier(s.plan)==='pro')?'pro':active.some(s=>planTier(s.plan)==='creator')?'creator':'basic';
  return {profile:profiles[0],wallet:wallets[0],credits,jobs,subscriptions,payments,plan:lifetime.length?'pro':tier,legacyLifetime:Boolean(lifetime.length)};
 }
-async function removeAccount(u,password){
- need(typeof password==='string'&&password.length<=1024,400,'Confirm your password.');
- const verified=await fetch(env.SUPABASE_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json'},body:JSON.stringify({email:u.email,password}),signal:AbortSignal.timeout(12000)});
- need(verified.ok&&(await verified.json()).user?.id===u.id,403,'Password verification failed.');
- await rpc('begin_delete',{p_user:u.id});
- const assets=await rows('user_assets',{user_id:'eq.'+u.id,select:'id,object_key,thumbnail_key',limit:'100'});
- for(const asset of assets){for(const key of [asset.object_key,asset.thumbnail_key])if(key.startsWith('users/'+u.id+'/'))await deleteR2Object(key);}
-
- // Paginate by deleting each batch before listing the next batch. Retrying resumes cleanup.
- for(let page=0;page<20;page++){
-  const files=await supa('/storage/v1/object/list/loox-results',{method:'POST',body:JSON.stringify({prefix:u.id+'/',limit:100})});
-  if(!files.length){
-   await supa('/auth/v1/admin/users/'+u.id,{method:'DELETE'});return;
-  }
-  await supa('/storage/v1/object/loox-results',{method:'DELETE',body:JSON.stringify({prefixes:files.map(f=>u.id+'/'+f.name)})});
- }
- need(false,503,'Cleanup is underway. Retry deletion to finish.');
-}
 export default handler(async(req,res)=>{
  const action=req.query.action;
  if(typeof action==='string'&&action.startsWith('control_')){req.query.action=action.slice(8);return controlAction(req,res);}
@@ -138,7 +120,8 @@ export default handler(async(req,res)=>{
  if(action==='enhance_prompt'){method(req,'POST');return res.json(await enhancePrompt(u,json(req)));}
  if(action==='reward'){method(req,'GET');return res.json(await rpc('reward',{p_user:u.id,p_fingerprint:mac('bonus:'+u.email.trim().toLowerCase()),p_claim:false}));}
  if(action==='account'){method(req,'GET');return res.json(await overview(u));}
- if(action==='export_account'){method(req,'POST');await limit(u,'export_account',3,600);const body=json(req);await verifyExportPassword(u,body.password,req.looxAuthClaims);return res.json(await collectAccountRecords(u));}
+ if(action==='security_summary'){method(req,'GET');await limit(u,'security_summary',20,60);return res.json(await securitySummary(u,req.looxAuthClaims));}
+ if(action==='export_account'){method(req,'POST');await limit(u,'export_account',3,600);const body=json(req);return res.json(await completeDataExport(u,body.password,req.looxAuthClaims,req.headers.authorization));}
  if(action==='gpu'){
   method(req,'GET');
   const [worker]=await rows('local_worker_health',{id:'eq.1',select:'modes,last_seen'});
@@ -202,7 +185,7 @@ export default handler(async(req,res)=>{
   }
   return res.json({deleted:true});
  }
- if(action==='delete'){await limit(u,'delete',3,600);await removeAccount(u,b.password);return res.json({deleted:true});}
+ if(action==='delete'){await limit(u,'delete',3,600);return res.json(await deletePrivateAccount(u,b.password,req.looxAuthClaims,req.headers.authorization));}
  const [profile]=await rows('profiles',{user_id:'eq.'+u.id,select:'deleting'});
  need(profile&&!profile.deleting,409,'Account deletion is in progress.');
  if(action==='recharge_checkout'){await limit(u,'checkout',3,600);return res.json(await rechargeCheckout(u,b.package));}

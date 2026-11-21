@@ -99,7 +99,7 @@ test('Cloudflare administrator API enforces verified MFA and rejects forged issu
  const worker=(await import('../cloudflare/loox-profile-api.js')).default;
  const u={id:randomUUID(),email_confirmed_at:new Date().toISOString(),app_metadata:{loox_template_admin:true}};
  t.mock.method(globalThis,'fetch',async input=>{assert.equal(new URL(input).hostname,'unit.invalid');return Response.json(u);});
- const env={SUPABASE_URL:'https://unit.invalid',SUPABASE_PUBLISHABLE_KEY:'test-public',DB:{prepare(){return {bind(){return {run:async()=>({meta:{changes:1}}),first:async()=>({posts:0})}}}}}};
+ const env={SUPABASE_URL:'https://unit.invalid',SUPABASE_PUBLISHABLE_KEY:'test-public',DB:{prepare(sql){return {bind(){return {run:async()=>({meta:{changes:1}}),first:async()=>sql.includes('account_lifecycle')?null:({posts:0})}}}}}};
  const request=(aal,extra={})=>new Request('https://worker.invalid/v1/admin-stats',{headers:{Authorization:'Bearer '+Buffer.from('{"alg":"HS256"}').toString('base64url')+'.'+Buffer.from(JSON.stringify({sub:u.id,iss:'https://unit.invalid/auth/v1',aud:'authenticated',exp:Date.now()/1000+60,aal,...extra})).toString('base64url')+'.testsignature'}});
  assert.equal((await worker.fetch(request('aal1'),env)).status,403);
  assert.equal((await worker.fetch(request('aal2',{exp:1}),env)).status,401);
