@@ -50,7 +50,7 @@ def request(url, method="GET", data=None, headers=None, timeout=35):
             body = response.read(42_000_000)
             return json.loads(body) if "json" in response.headers.get("Content-Type", "") else body
     except urllib.error.HTTPError as exc:
-        print("HTTP", exc.code, url.split("?")[0])
+        print("Worker HTTP request failed", exc.code)
         raise
 
 def backend(action, value):
@@ -256,17 +256,17 @@ def run_job(job):
                 return
             except Exception as settle:
                 print("Delivery confirmation retry", attempt + 1,
-                      type(settle).__name__, str(settle)[:180])
+                      type(settle).__name__)
                 if attempt < 4:
                     time.sleep(min(30, 3 * (2 ** attempt)))
         print("Result saved in private storage; completion confirmation pending.")
         return
     except Exception as exc:
-        print("Generation or upload failed:", type(exc).__name__, str(exc)[:300])
+        print("Generation or upload failed:", type(exc).__name__)
         try:
             backend("complete", {"id": name, "lease": job["lease"], "success": False})
         except Exception as settle:
-            print("Failed to settle job; backend will expire it:", str(settle)[:200])
+            print("Failed to settle job; backend will expire it:", type(settle).__name__)
 
 def supported_modes():
     return (["generate", "generate_reference"] if IMAGE_JSON.exists() else []) + (
@@ -299,7 +299,7 @@ def main():
             print("Worker stopped.")
             return
         except Exception as exc:
-            print("Connection error:", type(exc).__name__, str(exc)[:150])
+            print("Connection error:", type(exc).__name__)
             time.sleep(12)
 
 if __name__ == "__main__":
