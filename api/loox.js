@@ -1,3 +1,5 @@
+import {accountOverview} from '../lib/account-overview.js';
+import {revokeSessions} from '../lib/account-sessions.js';
 import {securitySummary,completeDataExport,deletePrivateAccount} from '../lib/privacy.js';
 import {workflowCatalog,runWorkflow} from '../lib/workflows.js';
 import controlAction from '../lib/control-center.js';
@@ -64,19 +66,6 @@ async function publicMedia(req,res){
  res.setHeader('Cache-Control','no-store, max-age=0');return res.json({url,expires_in:300});
 }
 
-async function overview(u){
- const own={user_id:'eq.'+u.id}, recent={...own,order:'created_at.desc',limit:'40'};
- const [profiles,wallets,credits,jobs,subscriptions,payments,lifetime]=await Promise.all([
-  rows('profiles',{...own,select:'name,created_at,deleting'}),rows('wallets',{...own,select:'balance,debt'}),
-  rows('credits',{...recent,select:'reason,amount,created_at,reference'}),
-  rows('jobs',{...recent,select:'id,operation,cost,state,created_at'}),
-  rows('subscriptions',{...own,order:'updated_at.desc',select:'plan,status,ends_at'}),
-  rows('payments',{...recent,select:'plan,amount_cents,currency,status,created_at,reference'}),
-  rows('payments',{...own,plan:'eq.lifetime',status:'eq.paid',select:'reference',limit:'1'})
- ]);
- const active=subscriptions.filter(s=>activeSubscription(s)),tier=active.some(s=>s.plan.startsWith('business'))?'business':active.some(s=>planTier(s.plan)==='pro')?'pro':active.some(s=>planTier(s.plan)==='creator')?'creator':'basic';
- return {profile:profiles[0],wallet:wallets[0],credits,jobs,subscriptions,payments,plan:lifetime.length?'pro':tier,legacyLifetime:Boolean(lifetime.length)};
-}
 export default handler(async(req,res)=>{
  const action=req.query.action;
  if(typeof action==='string'&&action.startsWith('control_')){req.query.action=action.slice(8);return controlAction(req,res);}
@@ -119,7 +108,8 @@ export default handler(async(req,res)=>{
  if(action==='recharge_history'){method(req,'GET');return res.json({items:await rows('recharge_payments',{user_id:'eq.'+u.id,select:'reference,package_id,amount_cents,currency,status,credits,refunded_cents,created_at',order:'created_at.desc',limit:'100'})});}
  if(action==='enhance_prompt'){method(req,'POST');return res.json(await enhancePrompt(u,json(req)));}
  if(action==='reward'){method(req,'GET');return res.json(await rpc('reward',{p_user:u.id,p_fingerprint:mac('bonus:'+u.email.trim().toLowerCase()),p_claim:false}));}
- if(action==='account'){method(req,'GET');return res.json(await overview(u));}
+ if(action==='account'){method(req,'GET');return res.json(await accountOverview(u));}
+ if(action==='revoke_sessions'){method(req,'POST');await limit(u,'revoke_sessions',5,600);return res.json(await revokeSessions(u,json(req),req.looxAuthClaims,req.headers.authorization));}
  if(action==='security_summary'){method(req,'GET');await limit(u,'security_summary',20,60);return res.json(await securitySummary(u,req.looxAuthClaims));}
  if(action==='export_account'){method(req,'POST');await limit(u,'export_account',3,600);const body=json(req);return res.json(await completeDataExport(u,body.password,req.looxAuthClaims,req.headers.authorization));}
  if(action==='gpu'){
