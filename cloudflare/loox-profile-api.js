@@ -666,13 +666,13 @@ async function consumePrivacyProof(env,request,me){
  if(typeof data?.proof!=='string'||!/^[A-Za-z0-9_-]{43}$/.test(data.proof))bad(403,'Verify your password before exporting.');
  const response=await fetch(env.SUPABASE_URL+'/rest/v1/rpc/loox_consume_privacy_proof',{
   method:'POST',headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,Authorization:request.headers.get('Authorization'),'Content-Type':'application/json'},
-  body:JSON.stringify({p_token:data.proof}),redirect:'error',signal:AbortSignal.timeout(10000)
+  body:JSON.stringify({p_token:data.proof}),redirect:'manual',signal:AbortSignal.timeout(10000)
  });
  if(!response.ok||await response.json()!==true)bad(403,'Export approval expired or was already used. Verify your password again.');
 }
 async function approvedDeletion(env,request,me){
  const response=await fetch(env.SUPABASE_URL+'/rest/v1/loox_profiles?'+new URLSearchParams({user_id:'eq.'+me.id,select:'deleting',limit:'1'}),{
-  headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,Authorization:request.headers.get('Authorization')},redirect:'error',signal:AbortSignal.timeout(10000)
+  headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,Authorization:request.headers.get('Authorization')},redirect:'manual',signal:AbortSignal.timeout(10000)
  });
  const data=response.ok?await response.json():null;
  if(data?.[0]?.deleting!==true)bad(403,'Confirm account deletion through LOOX Settings first.');

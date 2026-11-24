@@ -4,7 +4,7 @@ import {createHmac,randomUUID} from 'node:crypto';
 import {PGlite} from '@electric-sql/pglite';
 import {readFile} from 'node:fs/promises';
 import {findModel,modelSettings,estimateCost,buildInput,validateSchema} from '../src/ai/model-registry.js';
-import {engineStart} from '../src/ai/engine.js';
+import {engineStart,engineCatalog} from '../src/ai/engine.js';
 import {createPrediction,downloadOutput,verifyWebhook} from '../src/ai/replicate-provider.js';
 
 test('unapproved paid submission never reads a wallet or contacts any provider',async()=>{const old=globalThis.fetch,flag=process.env.LOOX_PAID_GENERATION_APPROVED;delete process.env.LOOX_PAID_GENERATION_APPROVED;let calls=0;globalThis.fetch=async()=>{calls++;throw Error('Must not contact provider');};try{await assert.rejects(engineStart({id:randomUUID()},{model:'google_nano_2'}),/not approved/);assert.equal(calls,0);}finally{globalThis.fetch=old;if(flag===undefined)delete process.env.LOOX_PAID_GENERATION_APPROVED;else process.env.LOOX_PAID_GENERATION_APPROVED=flag;}});
@@ -39,3 +39,5 @@ test('atomic financial reservation, duplicate claim, failure liabilities and RLS
  await db.query("select loox_engine_invoice($1,7000,'invoice-fixture')",[first.id]);assert.equal((await db.query("select enabled from loox_provider_limits where provider='replicate'")).rows[0].enabled,false,'Unexpected actual spending pauses future requests');
  }finally{await db.close();}
 });
+
+test('video picker uses the lowest authoritative duration charge without inventing a base price',()=>{const m=engineCatalog('video',[{id:'video_veo_31_4',cost:225},{id:'video_veo_31_6',cost:335},{id:'video_veo_31_8',cost:450}]).find(m=>m.id==='veo_31');assert.equal(m.cost,225);assert.equal(m.creditCosts[8],450);assert.equal(m.available,false);assert.equal(engineCatalog('video',[]).find(m=>m.id==='veo_31').cost,null);});

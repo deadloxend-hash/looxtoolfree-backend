@@ -1,6 +1,6 @@
 # Verification record — 24 November 2026
 
-- Backend `npm test`: 75 passed, 0 failed. Includes mocked prediction creation, pinned schema-version submission, no paid requests without approval, ambiguous submission handling, webhook authentication, SSRF/size rejection, price validation, PostgreSQL credit reservations/refunds/duplicate claims/budget rollback and service-only permissions.
+- Backend `npm test`: 76 passed, 0 failed. Includes mocked prediction creation, pinned schema-version submission, no paid requests without approval, ambiguous submission handling, webhook authentication, SSRF/size rejection, price validation, PostgreSQL credit reservations/refunds/duplicate claims/budget rollback and service-only permissions.
 - Frontend regression suite: 23 passed, 0 failed.
 - Private Control Center gateway suite: 2 passed, 0 failed; module syntax checked.
 - Static frontend audit: 640 pages, 18,512 references, 0 problems.
@@ -16,3 +16,7 @@ Modified backend areas: `src/ai/` registry/provider/engine/admin, `lib/engine-we
 Modified frontend areas: image/video generator modules, shared model picker, three studio entry HTML files and privacy policy. Modified private administration: gateway action allowlist, model-management UI and script cache version. MediaGrab was not modified.
 
 The first backend deployment exceeded Vercel Hobby’s 12-function limit. The signed engine callback now shares the existing loox-prediction endpoint; no hosting upgrade or new function is required.
+
+The Cloudflare profile CI exposed two pre-existing `redirect:error` options unsupported by Workers. Both now use manual redirects and explicitly reject non-OK responses. The deployed original source checksum matched the repository before the two-line fix; all existing bindings, compatibility settings and observability settings were inherited. Export/deletion checks continue to fail closed. Six focused privacy/profile regressions passed; no export or deletion was executed against production accounts.
+
+Live browser checks confirmed searchable image models with authoritative charges, free Cloudflare FLUX availability, and disabled paid image/video choices. A missing base price for duration-priced Veo models was corrected to use the lowest configured duration charge rather than an invented default.

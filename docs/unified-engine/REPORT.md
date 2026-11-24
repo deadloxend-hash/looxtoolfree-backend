@@ -49,3 +49,7 @@ Additive migration: supabase/migrations/20261124_unified_ai_engine.sql. It adds 
 Owner nonbillable schema verification and adapter correction are required for each exact model; indexed catalog evidence is insufficient. Model-specific reference/negative prompt/seed/custom size/audio/batch support is deliberately limited to validated adapters. No model is advertised as ready based on token presence. Pricing must be reverified within 31 days. Each model also needs a separately authorized billable acceptance run, approved budgets, per-user/model limits and eligible plan before activation. Do not set the approval environment flag until that separate decision.
 
 A process crash between provider acceptance and recording its prediction can require manual provider investigation if no signed callback arrives. Such jobs remain uncertain and retain credit/spending holds; automatic resubmission is prohibited. Daily maintenance is not a substitute for signed callbacks because provider result URLs expire. Individual private-admin provider connection tests, real owner/member sessions, a live ComfyUI worker run and real mobile hardware were not exercised here. No production data was deleted during tests.
+
+## Validation and rollout
+
+See [verification and modified-file record](VERIFICATION.md). Frontend, backend and private administration changes are committed and published; paid execution remains disabled.
