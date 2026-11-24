@@ -11,6 +11,8 @@
 
 Production deployment and GitHub Actions results are reported separately after publishing. A model is not considered functional merely because a mock test or catalog lookup passes.
 
-Modified backend areas: `src/ai/` registry/provider/engine/admin, `api/loox-engine-webhook.js`, `api/loox.js`, `api/loox-maintenance.js`, shared `lib/image-cloud.js`, `lib/video-cloud.js`, `lib/jobs.js`, `lib/control-center.js`, security-alert templates, `.env.example`, additive SQL, regression tests, rollback adapter archives and this reproducible audit.
+Modified backend areas: `src/ai/` registry/provider/engine/admin, `lib/engine-webhook.js and existing api/loox-prediction.js`, `api/loox.js`, `api/loox-maintenance.js`, shared `lib/image-cloud.js`, `lib/video-cloud.js`, `lib/jobs.js`, `lib/control-center.js`, security-alert templates, `.env.example`, additive SQL, regression tests, rollback adapter archives and this reproducible audit.
 
 Modified frontend areas: image/video generator modules, shared model picker, three studio entry HTML files and privacy policy. Modified private administration: gateway action allowlist, model-management UI and script cache version. MediaGrab was not modified.
+
+The first backend deployment exceeded Vercel Hobby’s 12-function limit. The signed engine callback now shares the existing loox-prediction endpoint; no hosting upgrade or new function is required.

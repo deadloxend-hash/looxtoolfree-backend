@@ -1,8 +1,10 @@
+import {handleEngineWebhook} from '../lib/engine-webhook.js';
 import {createHmac} from 'node:crypto';
 import {method,raw,env,need,uuid,equal,mac,handler,rows} from '../lib/core.js';
 import {bind,reconcile} from '../lib/jobs.js';
 export const config={api:{bodyParser:false}};
 export default handler(async(req,res)=>{
+ if(req.query.engine==='2')return handleEngineWebhook(req,res);
  method(req,'POST');
  const id=req.query.job, h=req.headers, t=h['webhook-timestamp'];
  need(uuid.test(id)&&env.REPLICATE_WEBHOOK_SIGNING_SECRET&&equal(req.query.bind,mac('prediction:'+id)),403,'Invalid callback.');

@@ -39,7 +39,7 @@ export async function engineStart(user,body,{acceptance=false}={}){
   for(const [field,suffix] of [['image','-engine-start'],['end_image','-engine-end']])if(body[field]){const normalized=await prepareImage(body[field],4_000_000),key=userKey(user.id,'inputs',job.id,'image/png',suffix);await putR2Object(key,Buffer.from(normalized.uri.split(',')[1],'base64'),'image/png');if(field==='image')first=workerInputURL(key,3600);else last=workerInputURL(key,3600);}
   const input=validateSchema(buildInput(model,body,settings,first,last),policy.schema);
   const claimed=await rpc('engine_claim',{p_job:job.id});need(claimed===true,409,'This prediction is already being submitted.');
-  const callback=new URL('https://looxtoolfree-backend.vercel.app/api/loox-engine-webhook');callback.searchParams.set('job',job.id);callback.searchParams.set('bind',mac('engine:'+job.id));
+  const callback=new URL('https://looxtoolfree-backend.vercel.app/api/loox-prediction?engine=2');callback.searchParams.set('job',job.id);callback.searchParams.set('bind',mac('engine:'+job.id));
   submitting=true;
   const prediction=await createPrediction(model.model,input,{approved:true,version:policy.schema_version,webhook:callback.href});
   await rpc('engine_bind',{p_job:job.id,p_prediction:prediction.id});
