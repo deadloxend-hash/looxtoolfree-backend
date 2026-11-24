@@ -1,0 +1,536 @@
+{
+  "verifiedAt": "2026-11-24",
+  "unit": "millicent = USD / 100000",
+  "operations": [
+    {
+      "id": "background",
+      "cost": 1,
+      "max_millicents": 3000
+    },
+    {
+      "id": "chat",
+      "cost": 1,
+      "max_millicents": 2000
+    },
+    {
+      "id": "enhance",
+      "cost": 2,
+      "max_millicents": 4000
+    },
+    {
+      "id": "erase",
+      "cost": 2,
+      "max_millicents": 6000
+    },
+    {
+      "id": "face_restore",
+      "cost": 13,
+      "max_millicents": 50000
+    },
+    {
+      "id": "face_swap",
+      "cost": 8,
+      "max_millicents": 30000
+    },
+    {
+      "id": "fill",
+      "cost": 3,
+      "max_millicents": 8000
+    },
+    {
+      "id": "generate",
+      "cost": 3,
+      "max_millicents": 1000
+    },
+    {
+      "id": "generate_bfl",
+      "cost": 6,
+      "max_millicents": 10000
+    },
+    {
+      "id": "generate_bfl_flux2_pro",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_bfl_klein_4b",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_byteplus",
+      "cost": 6,
+      "max_millicents": 10000
+    },
+    {
+      "id": "generate_byteplus_45",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_byteplus_50_flash",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_dreamina31",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_flux_dev",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_flux_kontext_pro",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_flux2_klein_edit",
+      "cost": 3,
+      "max_millicents": 1000
+    },
+    {
+      "id": "generate_flux2_max",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_flux3_image",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_google",
+      "cost": 5,
+      "max_millicents": 10000
+    },
+    {
+      "id": "generate_google_nano",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_google_nano_2",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_google_nano_21",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_google_nano_pro",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_gpt_image_15",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_gpt_image_2",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_gpt_image_26",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_grok_image",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_grok_image2",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_ideogram",
+      "cost": 6,
+      "max_millicents": 10000
+    },
+    {
+      "id": "generate_ideogram_45",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_ideogram_p_image",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_ideogram3",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_minimax_image",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_openai",
+      "cost": 6,
+      "max_millicents": 10000
+    },
+    {
+      "id": "generate_openai_gpt_image",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_qwen_image",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_recraft4",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_recraft4_pro",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_recraft41",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_replicate",
+      "cost": 6,
+      "max_millicents": 10000
+    },
+    {
+      "id": "generate_replicate_flux_ultra",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_replicate_hidream",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_replicate_imagen4",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_replicate_photon",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_replicate_qwen2",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_seedream3",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_seedream4",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_seedream5_lite",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_seedream5_pro",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_stability",
+      "cost": 5,
+      "max_millicents": 10000
+    },
+    {
+      "id": "generate_stability_sd35",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_stability_ultra",
+      "cost": 25,
+      "max_millicents": 100000
+    },
+    {
+      "id": "generate_video",
+      "cost": 8,
+      "max_millicents": 1000
+    },
+    {
+      "id": "generate_z_image",
+      "cost": 3,
+      "max_millicents": 1000
+    },
+    {
+      "id": "generate_z_image_turbo",
+      "cost": 3,
+      "max_millicents": 1000
+    },
+    {
+      "id": "restore",
+      "cost": 3,
+      "max_millicents": 8000
+    },
+    {
+      "id": "retouch",
+      "cost": 3,
+      "max_millicents": 8000
+    },
+    {
+      "id": "uncrop",
+      "cost": 4,
+      "max_millicents": 8000
+    },
+    {
+      "id": "upscale2",
+      "cost": 2,
+      "max_millicents": 4000
+    },
+    {
+      "id": "upscale4",
+      "cost": 4,
+      "max_millicents": 4000
+    },
+    {
+      "id": "video_flux3_video_10",
+      "cost": 70,
+      "max_millicents": 145000
+    },
+    {
+      "id": "video_flux3_video_5",
+      "cost": 35,
+      "max_millicents": 85000
+    },
+    {
+      "id": "video_grok_video_10",
+      "cost": 100,
+      "max_millicents": 84001
+    },
+    {
+      "id": "video_grok_video_5",
+      "cost": 50,
+      "max_millicents": 42001
+    },
+    {
+      "id": "video_kling_30_10",
+      "cost": 700,
+      "max_millicents": 600000
+    },
+    {
+      "id": "video_kling_30_5",
+      "cost": 350,
+      "max_millicents": 300000
+    },
+    {
+      "id": "video_kling_40_10",
+      "cost": 220,
+      "max_millicents": 188400
+    },
+    {
+      "id": "video_kling_40_5",
+      "cost": 110,
+      "max_millicents": 94200
+    },
+    {
+      "id": "video_kling_40_flash_10",
+      "cost": 135,
+      "max_millicents": 112800
+    },
+    {
+      "id": "video_kling_40_flash_5",
+      "cost": 70,
+      "max_millicents": 56400
+    },
+    {
+      "id": "video_luma_ray2_5",
+      "cost": 130,
+      "max_millicents": 108000
+    },
+    {
+      "id": "video_luma_ray2_9",
+      "cost": 230,
+      "max_millicents": 194400
+    },
+    {
+      "id": "video_minimax_h3_10",
+      "cost": 115,
+      "max_millicents": 96000
+    },
+    {
+      "id": "video_minimax_h3_5",
+      "cost": 60,
+      "max_millicents": 48000
+    },
+    {
+      "id": "video_minimax_h3_lite_10",
+      "cost": 60,
+      "max_millicents": 48000
+    },
+    {
+      "id": "video_minimax_h3_lite_5",
+      "cost": 30,
+      "max_millicents": 24000
+    },
+    {
+      "id": "video_runway_45_10",
+      "cost": 170,
+      "max_millicents": 250000
+    },
+    {
+      "id": "video_runway_45_5",
+      "cost": 85,
+      "max_millicents": 150000
+    },
+    {
+      "id": "video_seedance_20_10",
+      "cost": 260,
+      "max_millicents": 550000
+    },
+    {
+      "id": "video_seedance_20_5",
+      "cost": 130,
+      "max_millicents": 300000
+    },
+    {
+      "id": "video_seedance_20_fast_10",
+      "cost": 210,
+      "max_millicents": 300000
+    },
+    {
+      "id": "video_seedance_20_fast_5",
+      "cost": 110,
+      "max_millicents": 150000
+    },
+    {
+      "id": "video_seedance_25_10",
+      "cost": 325,
+      "max_millicents": 277440
+    },
+    {
+      "id": "video_seedance_25_5",
+      "cost": 165,
+      "max_millicents": 138720
+    },
+    {
+      "id": "video_veo_31_4",
+      "cost": 225,
+      "max_millicents": 192000
+    },
+    {
+      "id": "video_veo_31_6",
+      "cost": 335,
+      "max_millicents": 288001
+    },
+    {
+      "id": "video_veo_31_8",
+      "cost": 450,
+      "max_millicents": 384000
+    },
+    {
+      "id": "video_veo_31_fast_4",
+      "cost": 60,
+      "max_millicents": 230000
+    },
+    {
+      "id": "video_veo_31_fast_6",
+      "cost": 85,
+      "max_millicents": 330000
+    },
+    {
+      "id": "video_veo_31_fast_8",
+      "cost": 115,
+      "max_millicents": 440000
+    },
+    {
+      "id": "video_veo_31_lite_4",
+      "cost": 30,
+      "max_millicents": 24000
+    },
+    {
+      "id": "video_veo_31_lite_6",
+      "cost": 45,
+      "max_millicents": 36001
+    },
+    {
+      "id": "video_veo_31_lite_8",
+      "cost": 60,
+      "max_millicents": 48000
+    },
+    {
+      "id": "video_wan_30_10",
+      "cost": 100,
+      "max_millicents": 120000
+    },
+    {
+      "id": "video_wan_30_5",
+      "cost": 50,
+      "max_millicents": 60000
+    },
+    {
+      "id": "video_wan22_5b_fast",
+      "cost": 5,
+      "max_millicents": 12000
+    },
+    {
+      "id": "video_wan22_i2v_fast",
+      "cost": 25,
+      "max_millicents": 20000
+    },
+    {
+      "id": "video_wan22_t2v_fast",
+      "cost": 15,
+      "max_millicents": 20000
+    },
+    {
+      "id": "video_wan25_i2v",
+      "cost": 75,
+      "max_millicents": 140000
+    },
+    {
+      "id": "video_wan25_i2v_10",
+      "cost": 140,
+      "max_millicents": 140000
+    },
+    {
+      "id": "video_wan25_i2v_5",
+      "cost": 75,
+      "max_millicents": 70000
+    },
+    {
+      "id": "video_wan26_i2v_flash",
+      "cost": 35,
+      "max_millicents": 85000
+    },
+    {
+      "id": "video_wan26_i2v_flash_10",
+      "cost": 70,
+      "max_millicents": 85000
+    },
+    {
+      "id": "video_wan26_i2v_flash_5",
+      "cost": 35,
+      "max_millicents": 42500
+    }
+  ]
+}

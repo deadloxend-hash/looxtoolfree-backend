@@ -1,0 +1,2632 @@
+[
+  {
+    "id": "google_nano_2",
+    "name": "Nano Banana 2",
+    "kind": "image",
+    "operation": "generate_google_nano_2",
+    "previousProvider": "Google AI",
+    "previousModelId": "gemini-3.1-flash-image",
+    "model": "google/nano-banana-2",
+    "localOnly": false,
+    "legacyCreditDefault": 8,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/google/nano-banana-2",
+    "schemaSource": "https://replicate.com/google/nano-banana-2/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [
+        "1K",
+        "2K",
+        "4K"
+      ],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "1K"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "1K"
+        },
+        "usd": 0.067,
+        "unit": "image"
+      },
+      {
+        "criteria": {
+          "resolution": "2K"
+        },
+        "usd": 0.101,
+        "unit": "image"
+      },
+      {
+        "criteria": {
+          "resolution": "4K"
+        },
+        "usd": 0.151,
+        "unit": "image"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "1K",
+        "2K",
+        "4K"
+      ]
+    }
+  },
+  {
+    "id": "google_nano_pro",
+    "name": "Nano Banana Pro",
+    "kind": "image",
+    "operation": "generate_google_nano_pro",
+    "previousProvider": "Google AI",
+    "previousModelId": "gemini-3-pro-image",
+    "model": "google/nano-banana-pro",
+    "localOnly": false,
+    "legacyCreditDefault": 18,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/google/nano-banana-pro",
+    "schemaSource": "https://replicate.com/google/nano-banana-pro/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [
+        "1K",
+        "2K",
+        "4K"
+      ],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "1K",
+      "allow_fallback_model": false
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "1K"
+        },
+        "usd": 0.15,
+        "unit": "image"
+      },
+      {
+        "criteria": {
+          "resolution": "2K"
+        },
+        "usd": 0.15,
+        "unit": "image"
+      },
+      {
+        "criteria": {
+          "resolution": "4K"
+        },
+        "usd": 0.3,
+        "unit": "image"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "1K",
+        "2K",
+        "4K"
+      ]
+    }
+  },
+  {
+    "id": "bfl_flux2_pro",
+    "name": "FLUX.2 Pro",
+    "kind": "image",
+    "operation": "generate_bfl_flux2_pro",
+    "previousProvider": "Black Forest Labs",
+    "previousModelId": "flux-2-pro",
+    "model": "black-forest-labs/flux-2-pro",
+    "localOnly": false,
+    "legacyCreditDefault": 9,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/black-forest-labs/flux-2-pro",
+    "schemaSource": "https://replicate.com/black-forest-labs/flux-2-pro/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [
+        "1 MP",
+        "2 MP",
+        "4 MP"
+      ],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "1 MP"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "1 MP"
+        },
+        "usd": 0.03,
+        "unit": "image",
+        "basis": "0.015/run + 0.015/output MP; no reference images"
+      },
+      {
+        "criteria": {
+          "resolution": "2 MP"
+        },
+        "usd": 0.045,
+        "unit": "image"
+      },
+      {
+        "criteria": {
+          "resolution": "4 MP"
+        },
+        "usd": 0.075,
+        "unit": "image"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "1 MP",
+        "2 MP",
+        "4 MP"
+      ]
+    }
+  },
+  {
+    "id": "bfl_klein_4b",
+    "name": "FLUX.2 Klein 4B",
+    "kind": "image",
+    "operation": "generate_bfl_klein_4b",
+    "previousProvider": "Black Forest Labs",
+    "previousModelId": "flux-2-klein-4b",
+    "model": "black-forest-labs/flux-2-klein-4b",
+    "localOnly": false,
+    "legacyCreditDefault": 5,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/black-forest-labs/flux-2-klein-4b",
+    "schemaSource": "https://replicate.com/black-forest-labs/flux-2-klein-4b/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [
+        "1 MP",
+        "2 MP",
+        "4 MP"
+      ],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "1 MP"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "1 MP"
+        },
+        "usd": 0.001,
+        "unit": "image"
+      },
+      {
+        "criteria": {
+          "resolution": "2 MP"
+        },
+        "usd": 0.002,
+        "unit": "image"
+      },
+      {
+        "criteria": {
+          "resolution": "4 MP"
+        },
+        "usd": 0.004,
+        "unit": "image"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "1 MP",
+        "2 MP",
+        "4 MP"
+      ]
+    }
+  },
+  {
+    "id": "ideogram_p_image",
+    "name": "Ideogram P-Image",
+    "kind": "image",
+    "operation": "generate_ideogram_p_image",
+    "previousProvider": "Ideogram",
+    "previousModelId": "p-image-ideogram",
+    "model": "prunaai/p-image-ideogram",
+    "localOnly": false,
+    "legacyCreditDefault": 7,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/prunaai/p-image-ideogram",
+    "schemaSource": "https://replicate.com/prunaai/p-image-ideogram/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {},
+    "rates": [],
+    "priceVerified": false,
+    "allowedSettings": {}
+  },
+  {
+    "id": "ideogram_45",
+    "name": "Ideogram 4.5",
+    "kind": "image",
+    "operation": "generate_ideogram_45",
+    "previousProvider": "Ideogram",
+    "previousModelId": "ideogram-4-5",
+    "model": "ideogram-ai/ideogram-4-5",
+    "localOnly": false,
+    "legacyCreditDefault": 13,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/ideogram-ai/ideogram-4-5",
+    "schemaSource": "https://replicate.com/ideogram-ai/ideogram-4-5/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "quality": "medium",
+      "size": "source",
+      "num_images": 1
+    },
+    "rates": [
+      {
+        "criteria": {
+          "quality": "low"
+        },
+        "usd": 0.03,
+        "unit": "image"
+      },
+      {
+        "criteria": {
+          "quality": "medium"
+        },
+        "usd": 0.06,
+        "unit": "image"
+      },
+      {
+        "criteria": {
+          "quality": "high"
+        },
+        "usd": 0.1,
+        "unit": "image"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "quality": [
+        "low",
+        "medium",
+        "high"
+      ]
+    }
+  },
+  {
+    "id": "stability_sd35",
+    "name": "Stable Diffusion 3.5 Large",
+    "kind": "image",
+    "operation": "generate_stability_sd35",
+    "previousProvider": "Stability AI",
+    "previousModelId": "sd3.5-large",
+    "model": "stability-ai/stable-diffusion-3.5-large",
+    "localOnly": false,
+    "legacyCreditDefault": 10,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/stability-ai/stable-diffusion-3.5-large",
+    "schemaSource": "https://replicate.com/stability-ai/stable-diffusion-3.5-large/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {},
+    "rates": [
+      {
+        "criteria": {},
+        "usd": 0.065,
+        "unit": "image"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {}
+  },
+  {
+    "id": "stability_ultra",
+    "name": "Stable Image Ultra",
+    "kind": "image",
+    "operation": "generate_stability_ultra",
+    "previousProvider": "Stability AI",
+    "previousModelId": "ultra",
+    "model": null,
+    "localOnly": false,
+    "legacyCreditDefault": 12,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": false,
+    "verifiedAt": "2026-11-24",
+    "source": null,
+    "schemaSource": null,
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {},
+    "rates": [],
+    "priceVerified": false,
+    "allowedSettings": {},
+    "verificationNote": "Exact current Replicate model not verified. No substitute; disabled."
+  },
+  {
+    "id": "byteplus_45",
+    "name": "Seedream 4.5",
+    "kind": "image",
+    "operation": "generate_byteplus_45",
+    "previousProvider": "BytePlus",
+    "previousModelId": "seedream-4-5-251128",
+    "model": "bytedance/seedream-4.5",
+    "localOnly": false,
+    "legacyCreditDefault": 8,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/bytedance/seedream-4.5",
+    "schemaSource": "https://replicate.com/bytedance/seedream-4.5/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {},
+    "rates": [
+      {
+        "criteria": {},
+        "usd": 0.04,
+        "unit": "image"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {}
+  },
+  {
+    "id": "byteplus_50_flash",
+    "name": "Seedream 5.0 Flash",
+    "kind": "image",
+    "operation": "generate_byteplus_50_flash",
+    "previousProvider": "BytePlus",
+    "previousModelId": "dola-seedream-5-0-flash-260915",
+    "model": null,
+    "localOnly": false,
+    "legacyCreditDefault": 9,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": false,
+    "verifiedAt": "2026-11-24",
+    "source": null,
+    "schemaSource": null,
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {},
+    "rates": [],
+    "priceVerified": false,
+    "allowedSettings": {},
+    "verificationNote": "Exact current Replicate model not verified. No substitute; disabled."
+  },
+  {
+    "id": "openai_gpt_image",
+    "name": "GPT Image",
+    "kind": "image",
+    "operation": "generate_openai_gpt_image",
+    "previousProvider": "OpenAI",
+    "previousModelId": "gpt-image-2.5-flare",
+    "model": "openai/gpt-image-2.5-flare",
+    "localOnly": false,
+    "legacyCreditDefault": 16,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/openai/gpt-image-2.5-flare",
+    "schemaSource": "https://replicate.com/openai/gpt-image-2.5-flare/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "quality": "medium",
+      "number_of_images": 1,
+      "output_format": "png"
+    },
+    "rates": [],
+    "priceVerified": false,
+    "allowedSettings": {
+      "quality": [
+        "low",
+        "medium",
+        "high"
+      ]
+    }
+  },
+  {
+    "id": "z_image_turbo",
+    "name": "Z-Image Turbo",
+    "kind": "image",
+    "operation": "generate_z_image_turbo",
+    "previousProvider": "Replicate",
+    "previousModelId": "prunaai/z-image-turbo",
+    "model": null,
+    "localOnly": true,
+    "legacyCreditDefault": 3,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": false,
+    "verifiedAt": "2026-11-24",
+    "source": null,
+    "schemaSource": null,
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {},
+    "rates": [],
+    "priceVerified": false,
+    "allowedSettings": {}
+  },
+  {
+    "id": "replicate_qwen2",
+    "name": "Qwen Image 2",
+    "kind": "image",
+    "operation": "generate_replicate_qwen2",
+    "previousProvider": "Replicate",
+    "previousModelId": "qwen/qwen-image-2",
+    "model": "qwen/qwen-image-2",
+    "localOnly": false,
+    "legacyCreditDefault": 7,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/qwen/qwen-image-2",
+    "schemaSource": "https://replicate.com/qwen/qwen-image-2/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {},
+    "rates": [
+      {
+        "criteria": {},
+        "usd": 0.035,
+        "unit": "image"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {}
+  },
+  {
+    "id": "replicate_hidream",
+    "name": "HiDream-I1 Fast",
+    "kind": "image",
+    "operation": "generate_replicate_hidream",
+    "previousProvider": "Replicate",
+    "previousModelId": "prunaai/hidream-l1-fast",
+    "model": "prunaai/hidream-l1-fast",
+    "localOnly": false,
+    "legacyCreditDefault": 5,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/prunaai/hidream-l1-fast",
+    "schemaSource": "https://replicate.com/prunaai/hidream-l1-fast/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "1024 \u00d7 1024 (Square)",
+      "model_type": "fast",
+      "output_format": "png"
+    },
+    "rates": [
+      {
+        "criteria": {},
+        "usd": 0.005,
+        "unit": "image"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {}
+  },
+  {
+    "id": "replicate_imagen4",
+    "name": "Imagen 4 Fast",
+    "kind": "image",
+    "operation": "generate_replicate_imagen4",
+    "previousProvider": "Replicate",
+    "previousModelId": "google/imagen-4-fast",
+    "model": "google/imagen-4-fast",
+    "localOnly": false,
+    "legacyCreditDefault": 6,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/google/imagen-4-fast",
+    "schemaSource": "https://replicate.com/google/imagen-4-fast/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {},
+    "rates": [
+      {
+        "criteria": {},
+        "usd": 0.02,
+        "unit": "image"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {},
+    "verificationNote": "Catalog/search evidence exists but direct page retrieval was inconsistent. Requires authenticated model/schema verification before access."
+  },
+  {
+    "id": "replicate_photon",
+    "name": "Luma Photon",
+    "kind": "image",
+    "operation": "generate_replicate_photon",
+    "previousProvider": "Replicate",
+    "previousModelId": "luma/photon",
+    "model": "luma/photon",
+    "localOnly": false,
+    "legacyCreditDefault": 7,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/luma/photon",
+    "schemaSource": "https://replicate.com/luma/photon/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {},
+    "rates": [
+      {
+        "criteria": {},
+        "usd": 0.03,
+        "unit": "image"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {}
+  },
+  {
+    "id": "replicate_flux_ultra",
+    "name": "FLUX 1.1 Pro Ultra",
+    "kind": "image",
+    "operation": "generate_replicate_flux_ultra",
+    "previousProvider": "Replicate",
+    "previousModelId": "black-forest-labs/flux-1.1-pro-ultra",
+    "model": "black-forest-labs/flux-1.1-pro-ultra",
+    "localOnly": false,
+    "legacyCreditDefault": 9,
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/black-forest-labs/flux-1.1-pro-ultra",
+    "schemaSource": "https://replicate.com/black-forest-labs/flux-1.1-pro-ultra/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {},
+    "rates": [
+      {
+        "criteria": {},
+        "usd": 0.06,
+        "unit": "image"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {}
+  },
+  {
+    "id": "wan22_i2v_fast",
+    "name": "Wan 2.2 I2V Fast",
+    "kind": "video",
+    "operation": "video_wan22_i2v_fast",
+    "previousProvider": "Replicate",
+    "previousModelId": "wan-video/wan-2.2-i2v-fast",
+    "model": "wan-video/wan-2.2-i2v-fast",
+    "localOnly": false,
+    "legacyCreditDefault": 25,
+    "durations": [
+      5
+    ],
+    "creditsByDuration": null,
+    "minimumPlan": "creator",
+    "imageRequired": true,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/wan-video/wan-2.2-i2v-fast",
+    "schemaSource": "https://replicate.com/wan-video/wan-2.2-i2v-fast/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [
+        "480p",
+        "720p"
+      ],
+      "textToImage": false,
+      "textToVideo": false,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "480p"
+        },
+        "usd": 0.05,
+        "unit": "video",
+        "duration": 5
+      },
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.11,
+        "unit": "video",
+        "duration": 5
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "480p",
+        "720p"
+      ]
+    }
+  },
+  {
+    "id": "wan22_5b_fast",
+    "name": "Wan 2.2 5B Fast",
+    "kind": "video",
+    "operation": "video_wan22_5b_fast",
+    "previousProvider": "Replicate",
+    "previousModelId": "wan-video/wan-2.2-5b-fast",
+    "model": "wan-video/wan-2.2-5b-fast",
+    "localOnly": false,
+    "legacyCreditDefault": 5,
+    "durations": [
+      5
+    ],
+    "creditsByDuration": null,
+    "minimumPlan": "creator",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/wan-video/wan-2.2-5b-fast",
+    "schemaSource": "https://replicate.com/wan-video/wan-2.2-5b-fast/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "480p",
+        "720p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "480p"
+        },
+        "usd": 0.0125,
+        "unit": "video",
+        "duration": 5
+      },
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.025,
+        "unit": "video",
+        "duration": 5
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "480p",
+        "720p"
+      ]
+    }
+  },
+  {
+    "id": "wan22_t2v_fast",
+    "name": "Wan 2.2 T2V Fast",
+    "kind": "video",
+    "operation": "video_wan22_t2v_fast",
+    "previousProvider": "Replicate",
+    "previousModelId": "wan-video/wan-2.2-t2v-fast",
+    "model": "wan-video/wan-2.2-t2v-fast",
+    "localOnly": false,
+    "legacyCreditDefault": 15,
+    "durations": [
+      5
+    ],
+    "creditsByDuration": null,
+    "minimumPlan": "creator",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/wan-video/wan-2.2-t2v-fast",
+    "schemaSource": "https://replicate.com/wan-video/wan-2.2-t2v-fast/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "480p",
+        "720p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "480p"
+        },
+        "usd": 0.05,
+        "unit": "video",
+        "duration": 5
+      },
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.1,
+        "unit": "video",
+        "duration": 5
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "480p",
+        "720p"
+      ]
+    }
+  },
+  {
+    "id": "wan25_i2v",
+    "name": "Wan 2.5 I2V",
+    "kind": "video",
+    "operation": "video_wan25_i2v",
+    "previousProvider": "Replicate",
+    "previousModelId": "wan-video/wan-2.5-i2v",
+    "model": "wan-video/wan-2.5-i2v",
+    "localOnly": false,
+    "legacyCreditDefault": 75,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 75,
+      "10": 140
+    },
+    "minimumPlan": "creator",
+    "imageRequired": true,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/wan-video/wan-2.5-i2v",
+    "schemaSource": "https://replicate.com/wan-video/wan-2.5-i2v/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "480p",
+        "720p",
+        "1080p"
+      ],
+      "textToImage": false,
+      "textToVideo": false,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "480p"
+        },
+        "usd": 0.05,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.1,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "1080p"
+        },
+        "usd": 0.15,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "480p",
+        "720p",
+        "1080p"
+      ]
+    }
+  },
+  {
+    "id": "wan26_i2v_flash",
+    "name": "Wan 2.6 I2V Flash",
+    "kind": "video",
+    "operation": "video_wan26_i2v_flash",
+    "previousProvider": "Replicate",
+    "previousModelId": "wan-video/wan2.6-i2v-flash",
+    "model": "wan-video/wan2.6-i2v-flash",
+    "localOnly": false,
+    "legacyCreditDefault": 35,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 35,
+      "10": 70
+    },
+    "minimumPlan": "creator",
+    "imageRequired": true,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/wan-video/wan2.6-i2v-flash",
+    "schemaSource": "https://replicate.com/wan-video/wan2.6-i2v-flash/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p",
+        "1080p"
+      ],
+      "textToImage": false,
+      "textToVideo": false,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.05,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "1080p"
+        },
+        "usd": 0.075,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "720p",
+        "1080p"
+      ]
+    }
+  },
+  {
+    "id": "kling_30",
+    "name": "Kling 3.0 Standard",
+    "kind": "video",
+    "operation": "video_kling_30",
+    "previousProvider": "Replicate",
+    "previousModelId": "kwaivgi/kling-v3-video",
+    "model": "kwaivgi/kling-v3-video",
+    "localOnly": false,
+    "legacyCreditDefault": 350,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 350,
+      "10": 700
+    },
+    "minimumPlan": "pro",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/kwaivgi/kling-v3-video",
+    "schemaSource": "https://replicate.com/kwaivgi/kling-v3-video/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": true,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": true,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p",
+      "audio": false
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "720p",
+          "audio": false
+        },
+        "usd": 0.168,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "720p",
+          "audio": true
+        },
+        "usd": 0.252,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "720p"
+      ],
+      "audio": [
+        false,
+        true
+      ]
+    }
+  },
+  {
+    "id": "seedance_20",
+    "name": "Seedance 2.0",
+    "kind": "video",
+    "operation": "video_seedance_20",
+    "previousProvider": "Replicate",
+    "previousModelId": "bytedance/seedance-2.0",
+    "model": "bytedance/seedance-2.0",
+    "localOnly": false,
+    "legacyCreditDefault": 130,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 130,
+      "10": 260
+    },
+    "minimumPlan": "pro",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/bytedance/seedance-2.0",
+    "schemaSource": "https://replicate.com/bytedance/seedance-2.0/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [
+        "480p",
+        "720p",
+        "1080p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "480p"
+        },
+        "usd": 0.08,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.18,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "1080p"
+        },
+        "usd": 0.45,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "480p",
+        "720p",
+        "1080p"
+      ]
+    }
+  },
+  {
+    "id": "veo_31_fast",
+    "name": "Veo 3.1 Fast",
+    "kind": "video",
+    "operation": "video_veo_31_fast",
+    "previousProvider": "Replicate",
+    "previousModelId": "google/veo-3.1-fast",
+    "model": "google/veo-3.1-fast",
+    "localOnly": false,
+    "legacyCreditDefault": 60,
+    "durations": [
+      4,
+      6,
+      8
+    ],
+    "creditsByDuration": {
+      "4": 60,
+      "6": 85,
+      "8": 115
+    },
+    "minimumPlan": "pro",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/google/veo-3.1-fast",
+    "schemaSource": "https://replicate.com/google/veo-3.1-fast/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": true,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": true,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p",
+      "audio": false
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "720p",
+          "audio": false
+        },
+        "usd": 0.1,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "720p",
+          "audio": true
+        },
+        "usd": 0.15,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "720p"
+      ],
+      "audio": [
+        false,
+        true
+      ]
+    }
+  },
+  {
+    "id": "runway_45",
+    "name": "Runway Gen-4.5",
+    "kind": "video",
+    "operation": "video_runway_45",
+    "previousProvider": "Replicate",
+    "previousModelId": "runwayml/gen-4.5",
+    "model": "runwayml/gen-4.5",
+    "localOnly": false,
+    "legacyCreditDefault": 85,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 85,
+      "10": 170
+    },
+    "minimumPlan": "pro",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/runwayml/gen-4.5",
+    "schemaSource": "https://replicate.com/runwayml/gen-4.5/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.12,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "720p"
+      ]
+    }
+  },
+  {
+    "id": "flux3_video",
+    "name": "FLUX 3 Video Draft HD",
+    "kind": "video",
+    "operation": "video_flux3_video",
+    "previousProvider": "BFL",
+    "previousModelId": "flux-3-video",
+    "model": null,
+    "localOnly": false,
+    "legacyCreditDefault": 35,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 35,
+      "10": 70
+    },
+    "minimumPlan": "pro",
+    "imageRequired": false,
+    "catalogVerified": false,
+    "verifiedAt": "2026-11-24",
+    "source": null,
+    "schemaSource": null,
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {},
+    "rates": [],
+    "priceVerified": false,
+    "allowedSettings": {},
+    "verificationNote": "Exact current Replicate model not verified. No substitute; disabled."
+  },
+  {
+    "id": "kling_40",
+    "name": "Kling 4.0",
+    "kind": "video",
+    "operation": "video_kling_40",
+    "previousProvider": "Replicate",
+    "previousModelId": "kwaivgi/kling-v4.0",
+    "model": "kwaivgi/kling-v4.0",
+    "localOnly": false,
+    "legacyCreditDefault": 110,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 110,
+      "10": 220
+    },
+    "minimumPlan": "pro",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/kwaivgi/kling-v4.0",
+    "schemaSource": "https://replicate.com/kwaivgi/kling-v4.0/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p",
+        "1080p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": true,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.157,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "1080p"
+        },
+        "usd": 0.235,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "720p",
+        "1080p"
+      ]
+    }
+  },
+  {
+    "id": "kling_40_flash",
+    "name": "Kling 4.0 Flash",
+    "kind": "video",
+    "operation": "video_kling_40_flash",
+    "previousProvider": "Replicate",
+    "previousModelId": "kwaivgi/kling-v4-flash",
+    "model": "kwaivgi/kling-v4-flash",
+    "localOnly": false,
+    "legacyCreditDefault": 70,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 70,
+      "10": 135
+    },
+    "minimumPlan": "creator",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/kwaivgi/kling-v4-flash",
+    "schemaSource": "https://replicate.com/kwaivgi/kling-v4-flash/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.094,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "720p"
+      ]
+    }
+  },
+  {
+    "id": "seedance_25",
+    "name": "Seedance 2.5",
+    "kind": "video",
+    "operation": "video_seedance_25",
+    "previousProvider": "Replicate",
+    "previousModelId": "bytedance/seedance-2.5",
+    "model": "bytedance/seedance-2.5",
+    "localOnly": false,
+    "legacyCreditDefault": 165,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 165,
+      "10": 325
+    },
+    "minimumPlan": "pro",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/bytedance/seedance-2.5",
+    "schemaSource": "https://replicate.com/bytedance/seedance-2.5/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [
+        "480p",
+        "720p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": true,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "480p"
+        },
+        "usd": 0.1028,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.2312,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "480p",
+        "720p"
+      ]
+    }
+  },
+  {
+    "id": "seedance_20_fast",
+    "name": "Seedance 2.0 Fast",
+    "kind": "video",
+    "operation": "video_seedance_20_fast",
+    "previousProvider": "Replicate",
+    "previousModelId": "bytedance/seedance-2.0-fast",
+    "model": "bytedance/seedance-2.0-fast",
+    "localOnly": false,
+    "legacyCreditDefault": 110,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 110,
+      "10": 210
+    },
+    "minimumPlan": "creator",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/bytedance/seedance-2.0-fast",
+    "schemaSource": "https://replicate.com/bytedance/seedance-2.0-fast/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [
+        "480p",
+        "720p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": true,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "480p"
+        },
+        "usd": 0.07,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.15,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "480p",
+        "720p"
+      ]
+    }
+  },
+  {
+    "id": "grok_video",
+    "name": "Grok Imagine Video",
+    "kind": "video",
+    "operation": "video_grok_video",
+    "previousProvider": "Replicate",
+    "previousModelId": "xai/grok-imagine-video",
+    "model": "xai/grok-imagine-video",
+    "localOnly": false,
+    "legacyCreditDefault": 50,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 50,
+      "10": 100
+    },
+    "minimumPlan": "creator",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/xai/grok-imagine-video",
+    "schemaSource": "https://replicate.com/xai/grok-imagine-video/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p",
+        "480p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.07,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "480p"
+        },
+        "usd": 0.05,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "720p",
+        "480p"
+      ]
+    }
+  },
+  {
+    "id": "veo_31",
+    "name": "Veo 3.1",
+    "kind": "video",
+    "operation": "video_veo_31",
+    "previousProvider": "Replicate",
+    "previousModelId": "google/veo-3.1",
+    "model": "google/veo-3.1",
+    "localOnly": false,
+    "legacyCreditDefault": 225,
+    "durations": [
+      4,
+      6,
+      8
+    ],
+    "creditsByDuration": {
+      "4": 225,
+      "6": 335,
+      "8": 450
+    },
+    "minimumPlan": "pro",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/google/veo-3.1",
+    "schemaSource": "https://replicate.com/google/veo-3.1/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": true,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": true,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p",
+      "audio": false
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "720p",
+          "audio": false
+        },
+        "usd": 0.2,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "720p",
+          "audio": true
+        },
+        "usd": 0.4,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "720p"
+      ],
+      "audio": [
+        false,
+        true
+      ]
+    }
+  },
+  {
+    "id": "veo_31_lite",
+    "name": "Veo 3.1 Lite",
+    "kind": "video",
+    "operation": "video_veo_31_lite",
+    "previousProvider": "Replicate",
+    "previousModelId": "google/veo-3.1-lite",
+    "model": "google/veo-3.1-lite",
+    "localOnly": false,
+    "legacyCreditDefault": 30,
+    "durations": [
+      4,
+      6,
+      8
+    ],
+    "creditsByDuration": {
+      "4": 30,
+      "6": 45,
+      "8": 60
+    },
+    "minimumPlan": "creator",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/google/veo-3.1-lite",
+    "schemaSource": "https://replicate.com/google/veo-3.1-lite/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p",
+        "1080p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": true,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.05,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "1080p"
+        },
+        "usd": 0.08,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "720p",
+        "1080p"
+      ]
+    },
+    "verificationNote": "Catalog/search evidence exists but direct page retrieval was inconsistent. Requires authenticated model/schema verification before access."
+  },
+  {
+    "id": "minimax_h3",
+    "name": "MiniMax H3",
+    "kind": "video",
+    "operation": "video_minimax_h3",
+    "previousProvider": "Replicate",
+    "previousModelId": "minimax/h3",
+    "model": "minimax/h3",
+    "localOnly": false,
+    "legacyCreditDefault": 60,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 60,
+      "10": 115
+    },
+    "minimumPlan": "creator",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/minimax/h3",
+    "schemaSource": "https://replicate.com/minimax/h3/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [
+        "768P",
+        "2K"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": true,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "768P"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "768P"
+        },
+        "usd": 0.08,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "2K"
+        },
+        "usd": 0.13,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "768P",
+        "2K"
+      ]
+    }
+  },
+  {
+    "id": "minimax_h3_lite",
+    "name": "MiniMax H3 Lite",
+    "kind": "video",
+    "operation": "video_minimax_h3_lite",
+    "previousProvider": "Replicate",
+    "previousModelId": "minimax/h3-lite",
+    "model": "minimax/h3-lite",
+    "localOnly": false,
+    "legacyCreditDefault": 30,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 30,
+      "10": 60
+    },
+    "minimumPlan": "creator",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/minimax/h3-lite",
+    "schemaSource": "https://replicate.com/minimax/h3-lite/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [
+        "768P",
+        "480P"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": true,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "768P"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "768P"
+        },
+        "usd": 0.04,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "480P"
+        },
+        "usd": 0.025,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "pricingNote": "List price used conservatively. Provider advertises 50% promotion through 2026-12-31; no budget depends on the discount.",
+    "allowedSettings": {
+      "resolution": [
+        "768P",
+        "480P"
+      ]
+    }
+  },
+  {
+    "id": "wan_30",
+    "name": "Wan 3.0",
+    "kind": "video",
+    "operation": "video_wan_30",
+    "previousProvider": "Replicate",
+    "previousModelId": "alibaba/wan-3",
+    "model": "alibaba/wan-3",
+    "localOnly": false,
+    "legacyCreditDefault": 50,
+    "durations": [
+      5,
+      10
+    ],
+    "creditsByDuration": {
+      "5": 50,
+      "10": 100
+    },
+    "minimumPlan": "creator",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/alibaba/wan-3",
+    "schemaSource": "https://replicate.com/alibaba/wan-3/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [
+        "480p",
+        "720p",
+        "1080p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "480p"
+        },
+        "usd": 0.035,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.07,
+        "unit": "second"
+      },
+      {
+        "criteria": {
+          "resolution": "1080p"
+        },
+        "usd": 0.14,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "480p",
+        "720p",
+        "1080p"
+      ]
+    }
+  },
+  {
+    "id": "luma_ray2",
+    "name": "Luma Ray 2",
+    "kind": "video",
+    "operation": "video_luma_ray2",
+    "previousProvider": "Replicate",
+    "previousModelId": "luma/ray-2-720p",
+    "model": "luma/ray-2-720p",
+    "localOnly": false,
+    "legacyCreditDefault": 130,
+    "durations": [
+      5,
+      9
+    ],
+    "creditsByDuration": {
+      "5": 130,
+      "9": 230
+    },
+    "minimumPlan": "creator",
+    "imageRequired": false,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/luma/ray-2-720p",
+    "schemaSource": "https://replicate.com/luma/ray-2-720p/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [
+        "720p"
+      ],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": true,
+      "startFrame": true,
+      "endFrame": true,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {
+      "resolution": "720p"
+    },
+    "rates": [
+      {
+        "criteria": {
+          "resolution": "720p"
+        },
+        "usd": 0.18,
+        "unit": "second"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {
+      "resolution": [
+        "720p"
+      ]
+    },
+    "verificationNote": "Catalog/search evidence exists but direct page retrieval was inconsistent. Requires authenticated model/schema verification before access."
+  },
+  {
+    "id": "sora_2",
+    "name": "Sora 2",
+    "kind": "video",
+    "operation": "video_sora_2",
+    "model": null,
+    "previousProvider": "Unverified",
+    "durations": [],
+    "minimumPlan": "pro",
+    "catalogVerified": false,
+    "verifiedAt": "2026-11-24",
+    "source": null,
+    "schemaSource": null,
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "16:9",
+        "9:16"
+      ],
+      "resolutions": [],
+      "textToImage": false,
+      "textToVideo": true,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {},
+    "rates": [],
+    "priceVerified": false,
+    "allowedSettings": {},
+    "verificationNote": "Exact current Replicate model not verified. No substitute; disabled."
+  },
+  {
+    "id": "flux_schnell_fallback",
+    "name": "FLUX.1 Schnell \u00b7 paid fallback",
+    "kind": "image",
+    "operation": "generate_flux_schnell_paid",
+    "model": "black-forest-labs/flux-schnell",
+    "previousProvider": "Local / Cloudflare",
+    "legacyCreditDefault": 3,
+    "durations": [],
+    "minimumPlan": "creator",
+    "fallbackOnly": true,
+    "catalogVerified": true,
+    "verifiedAt": "2026-11-24",
+    "source": "https://replicate.com/black-forest-labs/flux-schnell",
+    "schemaSource": "https://replicate.com/black-forest-labs/flux-schnell/api/schema",
+    "schemaVerified": false,
+    "paidEnabled": false,
+    "capabilities": {
+      "ratios": [
+        "1:1",
+        "16:9",
+        "9:16",
+        "4:3",
+        "3:4"
+      ],
+      "resolutions": [],
+      "textToImage": true,
+      "textToVideo": false,
+      "imageToVideo": false,
+      "startFrame": false,
+      "endFrame": false,
+      "referenceImages": false,
+      "videoReference": false,
+      "audioSelectable": false,
+      "quantity": [
+        1
+      ]
+    },
+    "inputDefaults": {},
+    "rates": [
+      {
+        "criteria": {},
+        "usd": 0.003,
+        "unit": "image"
+      }
+    ],
+    "priceVerified": true,
+    "allowedSettings": {}
+  }
+]

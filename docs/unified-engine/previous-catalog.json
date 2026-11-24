@@ -1,0 +1,535 @@
+{
+  "images": [
+    {
+      "id": "google_nano_2",
+      "provider": "Google AI",
+      "name": "Nano Banana 2",
+      "modelId": "gemini-3.1-flash-image",
+      "cost": 8,
+      "key": "LOOX_IMAGE_GOOGLE_API_KEY",
+      "description": "Fast, versatile image creation",
+      "operation": "generate_google_nano_2"
+    },
+    {
+      "id": "google_nano_pro",
+      "provider": "Google AI",
+      "name": "Nano Banana Pro",
+      "modelId": "gemini-3-pro-image",
+      "cost": 18,
+      "key": "LOOX_IMAGE_GOOGLE_API_KEY",
+      "description": "Detailed professional imagery",
+      "operation": "generate_google_nano_pro"
+    },
+    {
+      "id": "bfl_flux2_pro",
+      "provider": "Black Forest Labs",
+      "name": "FLUX.2 Pro",
+      "modelId": "flux-2-pro",
+      "cost": 9,
+      "key": "LOOX_IMAGE_BFL_API_KEY",
+      "description": "High fidelity prompt following",
+      "operation": "generate_bfl_flux2_pro"
+    },
+    {
+      "id": "bfl_klein_4b",
+      "provider": "Black Forest Labs",
+      "name": "FLUX.2 Klein 4B",
+      "modelId": "flux-2-klein-4b",
+      "cost": 5,
+      "key": "LOOX_IMAGE_BFL_API_KEY",
+      "description": "Fast FLUX.2 creation",
+      "operation": "generate_bfl_klein_4b"
+    },
+    {
+      "id": "ideogram_p_image",
+      "provider": "Ideogram",
+      "name": "Ideogram P-Image",
+      "modelId": "p-image-ideogram",
+      "cost": 7,
+      "key": "LOOX_IMAGE_IDEOGRAM_API_KEY",
+      "description": "Fast image and typography",
+      "operation": "generate_ideogram_p_image"
+    },
+    {
+      "id": "ideogram_45",
+      "provider": "Ideogram",
+      "name": "Ideogram 4.5",
+      "modelId": "ideogram-4-5",
+      "cost": 13,
+      "key": "LOOX_IMAGE_IDEOGRAM_API_KEY",
+      "description": "Precise creative design",
+      "operation": "generate_ideogram_45"
+    },
+    {
+      "id": "stability_sd35",
+      "provider": "Stability AI",
+      "name": "Stable Diffusion 3.5 Large",
+      "modelId": "sd3.5-large",
+      "cost": 10,
+      "key": "LOOX_IMAGE_STABILITY_API_KEY",
+      "description": "Detailed diffusion images",
+      "operation": "generate_stability_sd35"
+    },
+    {
+      "id": "stability_ultra",
+      "provider": "Stability AI",
+      "name": "Stable Image Ultra",
+      "modelId": "ultra",
+      "cost": 12,
+      "key": "LOOX_IMAGE_STABILITY_API_KEY",
+      "description": "High quality final images",
+      "operation": "generate_stability_ultra"
+    },
+    {
+      "id": "byteplus_45",
+      "provider": "BytePlus",
+      "name": "Seedream 4.5",
+      "modelId": "seedream-4-5-251128",
+      "cost": 8,
+      "key": "LOOX_IMAGE_BYTEPLUS_API_KEY",
+      "description": "Polished creative images",
+      "operation": "generate_byteplus_45"
+    },
+    {
+      "id": "byteplus_50_flash",
+      "provider": "BytePlus",
+      "name": "Seedream 5.0 Flash",
+      "modelId": "dola-seedream-5-0-flash-260915",
+      "cost": 9,
+      "key": "LOOX_IMAGE_BYTEPLUS_API_KEY",
+      "description": "Fast Seedream generation",
+      "operation": "generate_byteplus_50_flash"
+    },
+    {
+      "id": "openai_gpt_image",
+      "provider": "OpenAI",
+      "name": "GPT Image",
+      "modelId": "gpt-image-2.5-flare",
+      "cost": 16,
+      "key": "LOOX_IMAGE_OPENAI_API_KEY",
+      "description": "Precise image and text rendering",
+      "operation": "generate_openai_gpt_image"
+    },
+    {
+      "id": "z_image_turbo",
+      "provider": "Replicate",
+      "name": "Z-Image Turbo",
+      "modelId": "prunaai/z-image-turbo",
+      "cost": 3,
+      "key": "LOOX_IMAGE_REPLICATE_API_TOKEN",
+      "description": "Fast Z-Image generation with local GPU priority",
+      "operation": "generate_z_image_turbo"
+    },
+    {
+      "id": "replicate_qwen2",
+      "provider": "Replicate",
+      "name": "Qwen Image 2",
+      "modelId": "qwen/qwen-image-2",
+      "cost": 7,
+      "key": "LOOX_IMAGE_REPLICATE_API_TOKEN",
+      "description": "Strong text and visual realism",
+      "operation": "generate_replicate_qwen2"
+    },
+    {
+      "id": "replicate_hidream",
+      "provider": "Replicate",
+      "name": "HiDream-I1 Fast",
+      "modelId": "prunaai/hidream-l1-fast",
+      "cost": 5,
+      "key": "LOOX_IMAGE_REPLICATE_API_TOKEN",
+      "description": "Rapid creative images",
+      "operation": "generate_replicate_hidream"
+    },
+    {
+      "id": "replicate_imagen4",
+      "provider": "Replicate",
+      "name": "Imagen 4 Fast",
+      "modelId": "google/imagen-4-fast",
+      "cost": 6,
+      "key": "LOOX_IMAGE_REPLICATE_API_TOKEN",
+      "description": "Fast photographic creation",
+      "operation": "generate_replicate_imagen4"
+    },
+    {
+      "id": "replicate_photon",
+      "provider": "Replicate",
+      "name": "Luma Photon",
+      "modelId": "luma/photon",
+      "cost": 7,
+      "key": "LOOX_IMAGE_REPLICATE_API_TOKEN",
+      "description": "Creative professional looks",
+      "operation": "generate_replicate_photon"
+    },
+    {
+      "id": "replicate_flux_ultra",
+      "provider": "Replicate",
+      "name": "FLUX 1.1 Pro Ultra",
+      "modelId": "black-forest-labs/flux-1.1-pro-ultra",
+      "cost": 9,
+      "key": "LOOX_IMAGE_REPLICATE_API_TOKEN",
+      "description": "Detailed ultra images",
+      "operation": "generate_replicate_flux_ultra"
+    }
+  ],
+  "videos": [
+    {
+      "id": "wan22_i2v_fast",
+      "name": "Wan 2.2 I2V Fast",
+      "model": "wan-video/wan-2.2-i2v-fast",
+      "image": true,
+      "seconds": [
+        5
+      ],
+      "cost": 25,
+      "operation": "video_wan22_i2v_fast"
+    },
+    {
+      "id": "wan22_5b_fast",
+      "name": "Wan 2.2 5B Fast",
+      "model": "wan-video/wan-2.2-5b-fast",
+      "image": false,
+      "seconds": [
+        5
+      ],
+      "cost": 5,
+      "operation": "video_wan22_5b_fast"
+    },
+    {
+      "id": "wan22_t2v_fast",
+      "name": "Wan 2.2 T2V Fast",
+      "model": "wan-video/wan-2.2-t2v-fast",
+      "image": false,
+      "seconds": [
+        5
+      ],
+      "cost": 15,
+      "operation": "video_wan22_t2v_fast"
+    },
+    {
+      "id": "wan25_i2v",
+      "name": "Wan 2.5 I2V",
+      "model": "wan-video/wan-2.5-i2v",
+      "image": true,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 75,
+      "costs": {
+        "5": 75,
+        "10": 140
+      },
+      "operation": "video_wan25_i2v"
+    },
+    {
+      "id": "wan26_i2v_flash",
+      "name": "Wan 2.6 I2V Flash",
+      "model": "wan-video/wan2.6-i2v-flash",
+      "image": true,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 35,
+      "costs": {
+        "5": 35,
+        "10": 70
+      },
+      "operation": "video_wan26_i2v_flash"
+    },
+    {
+      "id": "kling_30",
+      "name": "Kling 3.0 Standard",
+      "model": "kwaivgi/kling-v3-video",
+      "image": false,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 350,
+      "costs": {
+        "5": 350,
+        "10": 700
+      },
+      "premium": true,
+      "provider": "Replicate",
+      "operation": "video_kling_30"
+    },
+    {
+      "id": "seedance_20",
+      "name": "Seedance 2.0",
+      "model": "bytedance/seedance-2.0",
+      "image": false,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 130,
+      "costs": {
+        "5": 130,
+        "10": 260
+      },
+      "premium": true,
+      "provider": "Replicate",
+      "operation": "video_seedance_20"
+    },
+    {
+      "id": "veo_31_fast",
+      "name": "Veo 3.1 Fast",
+      "model": "google/veo-3.1-fast",
+      "image": false,
+      "seconds": [
+        4,
+        6,
+        8
+      ],
+      "cost": 60,
+      "costs": {
+        "4": 60,
+        "6": 85,
+        "8": 115
+      },
+      "premium": true,
+      "provider": "Replicate",
+      "operation": "video_veo_31_fast"
+    },
+    {
+      "id": "runway_45",
+      "name": "Runway Gen-4.5",
+      "model": "runwayml/gen-4.5",
+      "image": false,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 85,
+      "costs": {
+        "5": 85,
+        "10": 170
+      },
+      "premium": true,
+      "provider": "Replicate",
+      "operation": "video_runway_45"
+    },
+    {
+      "id": "flux3_video",
+      "name": "FLUX 3 Video Draft HD",
+      "model": "flux-3-video",
+      "image": false,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 35,
+      "costs": {
+        "5": 35,
+        "10": 70
+      },
+      "premium": true,
+      "provider": "BFL",
+      "operation": "video_flux3_video"
+    },
+    {
+      "id": "kling_40",
+      "name": "Kling 4.0",
+      "model": "kwaivgi/kling-v4.0",
+      "image": false,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 110,
+      "costs": {
+        "5": 110,
+        "10": 220
+      },
+      "minimumPlan": "pro",
+      "provider": "Replicate",
+      "operation": "video_kling_40"
+    },
+    {
+      "id": "kling_40_flash",
+      "name": "Kling 4.0 Flash",
+      "model": "kwaivgi/kling-v4-flash",
+      "image": false,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 70,
+      "costs": {
+        "5": 70,
+        "10": 135
+      },
+      "minimumPlan": "creator",
+      "provider": "Replicate",
+      "operation": "video_kling_40_flash"
+    },
+    {
+      "id": "seedance_25",
+      "name": "Seedance 2.5",
+      "model": "bytedance/seedance-2.5",
+      "image": false,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 165,
+      "costs": {
+        "5": 165,
+        "10": 325
+      },
+      "minimumPlan": "pro",
+      "provider": "Replicate",
+      "operation": "video_seedance_25"
+    },
+    {
+      "id": "seedance_20_fast",
+      "name": "Seedance 2.0 Fast",
+      "model": "bytedance/seedance-2.0-fast",
+      "image": false,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 110,
+      "costs": {
+        "5": 110,
+        "10": 210
+      },
+      "minimumPlan": "creator",
+      "provider": "Replicate",
+      "operation": "video_seedance_20_fast"
+    },
+    {
+      "id": "grok_video",
+      "name": "Grok Imagine Video",
+      "model": "xai/grok-imagine-video",
+      "image": false,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 50,
+      "costs": {
+        "5": 50,
+        "10": 100
+      },
+      "minimumPlan": "creator",
+      "provider": "Replicate",
+      "operation": "video_grok_video"
+    },
+    {
+      "id": "veo_31",
+      "name": "Veo 3.1",
+      "model": "google/veo-3.1",
+      "image": false,
+      "seconds": [
+        4,
+        6,
+        8
+      ],
+      "cost": 225,
+      "costs": {
+        "4": 225,
+        "6": 335,
+        "8": 450
+      },
+      "minimumPlan": "pro",
+      "provider": "Replicate",
+      "operation": "video_veo_31"
+    },
+    {
+      "id": "veo_31_lite",
+      "name": "Veo 3.1 Lite",
+      "model": "google/veo-3.1-lite",
+      "image": false,
+      "seconds": [
+        4,
+        6,
+        8
+      ],
+      "cost": 30,
+      "costs": {
+        "4": 30,
+        "6": 45,
+        "8": 60
+      },
+      "minimumPlan": "creator",
+      "provider": "Replicate",
+      "operation": "video_veo_31_lite"
+    },
+    {
+      "id": "minimax_h3",
+      "name": "MiniMax H3",
+      "model": "minimax/h3",
+      "image": false,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 60,
+      "costs": {
+        "5": 60,
+        "10": 115
+      },
+      "minimumPlan": "creator",
+      "provider": "Replicate",
+      "operation": "video_minimax_h3"
+    },
+    {
+      "id": "minimax_h3_lite",
+      "name": "MiniMax H3 Lite",
+      "model": "minimax/h3-lite",
+      "image": false,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 30,
+      "costs": {
+        "5": 30,
+        "10": 60
+      },
+      "minimumPlan": "creator",
+      "provider": "Replicate",
+      "operation": "video_minimax_h3_lite"
+    },
+    {
+      "id": "wan_30",
+      "name": "Wan 3.0",
+      "model": "alibaba/wan-3",
+      "image": false,
+      "seconds": [
+        5,
+        10
+      ],
+      "cost": 50,
+      "costs": {
+        "5": 50,
+        "10": 100
+      },
+      "minimumPlan": "creator",
+      "provider": "Replicate",
+      "operation": "video_wan_30"
+    },
+    {
+      "id": "luma_ray2",
+      "name": "Luma Ray 2",
+      "model": "luma/ray-2-720p",
+      "image": false,
+      "seconds": [
+        5,
+        9
+      ],
+      "cost": 130,
+      "costs": {
+        "5": 130,
+        "9": 230
+      },
+      "minimumPlan": "creator",
+      "provider": "Replicate",
+      "operation": "video_luma_ray2"
+    }
+  ]
+}

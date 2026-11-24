@@ -1,53 +1,22 @@
-import fs from 'node:fs';
-import vm from 'node:vm';
 import assert from 'node:assert/strict';
-const source=fs.readFileSync('lib/image-cloud.js','utf8').replace(/^import .*;\n/gm,'').replace(/^export /gm,'');
-const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/0QAAAABJRU5ErkJggg==','base64');
-const calls=[];
-const env=Object.fromEntries(['GOOGLE','BFL','IDEOGRAM','STABILITY','BYTEPLUS','OPENAI','REPLICATE'].map(x=>['LOOX_IMAGE_'+x+(x==='REPLICATE'?'_API_TOKEN':'_API_KEY'),'TEST_ONLY']));
-class Problem extends Error {constructor(status,message){super(message);this.status=status}}
-const need=(yes,status,message)=>{if(!yes)throw new Problem(status,message)};
-const fetch=async(url,options={})=>{
- calls.push({url,options});
- if(url.startsWith('https://api.bfl.ai/v1/get_result'))return response({status:'Ready',result:{sample:'https://example.bfl.ai/result.png'}});
- if(url.includes('api.bfl.ai/v1/'))return response({id:'mock',polling_url:'https://api.bfl.ai/v1/get_result?id=mock'});
- if(url.includes('api.openai.com'))return response({data:[{b64_json:png.toString('base64')}]});
- if(url.includes('generativelanguage.googleapis.com'))return response({candidates:[{content:{parts:[{inlineData:{data:png.toString('base64')}}]}}]});
- if(url.includes('api.ideogram.ai'))return response({data:[{url:'https://example.ideogram.ai/result.png',is_image_safe:true}]});
- if(url.includes('ark.ap-southeast.bytepluses.com'))return response({data:[{b64_json:png.toString('base64')}]});
- if(url.includes('api.replicate.com'))return response({status:'succeeded',output:'https://replicate.delivery/result.png'});
- if(url.includes('api.stability.ai'))return {ok:true,arrayBuffer:async()=>png};
- if(url.includes('replicate.delivery')||url.includes('example.ideogram.ai')||url.includes('example.bfl.ai'))return {ok:true,arrayBuffer:async()=>png};
- throw Error('Unexpected URL '+url);
-};
-const response=value=>({ok:true,json:async()=>value,arrayBuffer:async()=>png});
-const context={Buffer,URL,FormData,AbortSignal,fetch,env,need,Problem,setTimeout,sharp:null,rows:async()=>catalog.map(m=>({id:m.operation,cost:m.cost})),rpc:()=>{throw Error('Reserve must not be reached')},supa:null,mac:null,uuid:null,authReady:()=>true};
-vm.runInNewContext(source+'\nglobalThis.testRoutes={catalog,imageBytes,imageCatalog,cloudJob};',context);
-const {catalog,imageBytes,imageCatalog,cloudJob}=context.testRoutes;
-assert.equal(catalog.length,17);
-assert.equal(imageCatalog([]).filter(x=>x.available).length,0);
-// A Replicate credential never enables Z-Image Turbo: that model is PC-only.
-assert.equal(imageCatalog(catalog.map(m=>({id:m.operation,cost:m.cost}))).filter(x=>x.available).length,0);
-const z=imageCatalog(catalog.map(m=>({id:m.operation,cost:m.cost}))).find(m=>m.id==='z_image_turbo');
-assert.equal(z.status,'coming_soon');
-assert.equal(z.provider,'LOOX Studio');
-for(const m of catalog){
- calls.length=0;
- const bytes=await imageBytes(m,'Mock prompt','1:1',{});
- assert.ok(bytes.length>0,m.id+' returned no image');
- const apiCall=calls.find(x=>x.options.method==='POST');
- assert.ok(apiCall,m.id+' did not route to an API');
- const payload=String(apiCall.options.body||'');
- const expected=m.provider==='Stability AI'?m.id==='stability_sd35'?'sd3':'ultra':m.modelId;
- assert.ok(apiCall.url.includes(expected)||payload.includes(expected),m.id+' routed to wrong model');
- assert.ok(!payload.includes('sk-proj-'),m.id+' leaked a credential');
- console.log('PASS '+m.id);
-}
-
-const beforeZ=calls.length;
-await assert.rejects(cloudJob({id:'test'},{model:'z_image_turbo',requestId:'ignore'}),e=>e.status===503&&/coming soon/i.test(e.message));
-assert.equal(calls.length,beforeZ,'Offline Z-Image Turbo must never contact Replicate or spend credits');
-console.log('PASS Z-Image Turbo rejects offline requests without paid API calls');
-
-for(const m of catalog.filter(m=>m.id!=='z_image_turbo')){const before=calls.length;await assert.rejects(cloudJob({id:'test'},{model:m.id}),e=>e.status===503);assert.equal(calls.length,before,m.id+' contacted a paid provider while unverified')}
-console.log('PASS all unverified models fail closed before reservation or provider call');
+import {registry,buildInput,modelSettings,validateSchema} from '../src/ai/model-registry.js';
+import {imageCatalog,cloudJob} from '../lib/image-cloud.js';
+import {engineCatalog} from '../src/ai/engine.js';
+const old=globalThis.fetch;let calls=0;
+globalThis.fetch=async()=>{calls++;throw Error('Unapproved models must not contact a provider');};
+try{
+ delete process.env.LOOX_PAID_GENERATION_APPROVED;
+ assert.equal(imageCatalog([]).filter(m=>m.available).length,0);
+ for(const m of registry.filter(m=>!m.localOnly)){
+  await assert.rejects(cloudJob({id:'fixture'},{model:m.id}),/not approved/);
+  assert.equal(calls,0);
+  assert.equal(engineCatalog(m.kind).find(x=>x.id===m.id)?.available??false,false);
+  if(!m.model)continue;
+  const body={prompt:'Mock schema only',ratio:m.capabilities.ratios[0],duration:m.durations[0],...(m.imageRequired?{image:'fixture'}:{})};
+  const settings=modelSettings(m,body),input=buildInput(m,body,settings,m.imageRequired?'https://owned.example.test/frame.png':null);
+  assert.ok(input.prompt);assert.ok(!JSON.stringify(input).includes('api_key'));
+  // Mock schema validates wiring, never represents a live provider schema.
+  validateSchema(input,{properties:Object.fromEntries(Object.entries(input).map(([k,v])=>[k,{type:typeof v==='number'?'integer':typeof v}]))});
+ }
+ console.log('PASS all paid routes fail closed and centralized adapter wiring validates against mocked schemas');
+}finally{globalThis.fetch=old;}

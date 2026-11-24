@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {rpc,rows,supa,env} from '../../lib/core.js';
 export const incidents={
+ ai_spending:['high','generation','AI spending reached a review threshold or exceeded its reserved estimate.','Review the private model dashboard and provider invoice. Paid generation may be paused.'],
  webhook_signature:['critical','payments','Payment webhook signature verification failed.','Review webhook configuration and repeated unauthorized requests.'],
  payment_processing:['critical','payments','A payment event could not be processed.','Review provider records and internal payment history before granting credits.'],
  unauthorized_admin:['high','security','Financial administrator access was denied.','Review administrator access and MFA enrollment.'],

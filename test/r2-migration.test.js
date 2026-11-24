@@ -16,8 +16,8 @@ test('migration verifies bytes before reporting success',()=>{
  assert.doesNotMatch(migration,/method:\s*['\"]DELETE['\"]/);
 });
 test('cloud generation verifies R2 before atomically settling the job',()=>{
- assert.match(imageCloud,/saveGeneratedMedia/);
- assert.match(imageCloud,/rpc\('finish_media'/);
+ assert.match(imageCloud,/engineStart/);assert.match(readFileSync(new URL('../src/ai/engine.js',import.meta.url),'utf8'),/saveGeneratedMedia/);
+ assert.match(readFileSync(new URL('../src/ai/engine.js',import.meta.url),'utf8'),/rpc\('finish_media'/);
  assert.doesNotMatch(imageCloud,/storage\/v1\/object\/loox-results/);
 });
 

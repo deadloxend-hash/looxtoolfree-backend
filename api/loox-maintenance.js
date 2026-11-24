@@ -1,3 +1,4 @@
+import {engineRecord,engineStatus} from '../src/ai/engine.js';
 import {monitorBilling} from '../src/billing/monitoring.js';
 import {deliverAlerts,incident} from '../src/notifications/security-alerts.js';
 import {method,handler,env,need,equal,rows,supa,rpc} from '../lib/core.js';
@@ -16,14 +17,16 @@ export default handler(async(req,res)=>{
  // Only short-lived proof hashes created by the privacy workflow, never user content.
  await supa('/rest/v1/loox_privacy_proofs?expires_at=lt.'+encodeURIComponent(new Date(Date.now()-86400000).toISOString()),{method:'DELETE'});
  await monitorBilling();
+ const spend=await rpc('engine_spending_health',{});
+ if(spend.day>=spend.daily_limit*.8||spend.month>=spend.monthly_limit*.8)await incident('ai_spending');
  await deliverAlerts();
  await rpc('local_expire',{});
  const staleCloud=await rows('jobs',{state:'in.(reserved,processing)',operation:'in.('+cloudOperations.join(',')+')',created_at:'lt.'+new Date(Date.now()-10*60000).toISOString(),select:'id',limit:'100'});
- for(const job of staleCloud)await rpc('finish',{p_id:job.id,p_path:null});
+ for(const job of staleCloud){const e=await engineRecord(job.id);if(e){if(e.prediction_id)await engineStatus({id:e.user_id},job.id).catch(()=>{});continue;}await rpc('finish',{p_id:job.id,p_path:null});}
  const jobs=await rows('jobs',{state:'in.(reserved,processing)',prediction:'not.is.null',
   operation:'not.in.('+cloudVideoOperations.join(',')+')',order:'created_at.asc',limit:'40'});
  const results=[];
- for(let i=0;i<jobs.length;i+=3)results.push(...await Promise.allSettled(jobs.slice(i,i+3).map(reconcile)));
+ for(let i=0;i<jobs.length;i+=3)results.push(...await Promise.allSettled(jobs.slice(i,i+3).map(async job=>(await engineRecord(job.id))?engineStatus({id:job.user_id},job.id):reconcile(job))));
  // Cloud video predictions are MP4 files, not PNG images; reconcile them separately.
  const videos=await rows('jobs',{state:'in.(reserved,processing)',operation:'in.('+cloudVideoOperations.join(',')+')',
   order:'created_at.asc',limit:'12',select:'id,user_id'});
@@ -34,7 +37,7 @@ export default handler(async(req,res)=>{
  if(finished.length){
   const prefixes=finished.flatMap(j=>['image','mask','target_image','swap_image','reference_image'].map(f=>j.user_id+'/'+j.id+'-'+f+'.png'));
   await supa('/storage/v1/object/loox-results',{method:'DELETE',body:JSON.stringify({prefixes})});
-  const inputKeys=finished.flatMap(j=>['target_image','swap_image','reference_image','video-source','video-end'].map(f=>userKey(j.user_id,'inputs',j.id,'image/png','-'+f)));
+  const inputKeys=finished.flatMap(j=>['target_image','swap_image','reference_image','video-source','video-end','engine-start','engine-end'].map(f=>userKey(j.user_id,'inputs',j.id,'image/png','-'+f)));
   for(let i=0;i<inputKeys.length;i+=10)await Promise.allSettled(inputKeys.slice(i,i+10).map(deleteR2Object));
   await supa('/rest/v1/loox_jobs?id=in.('+finished.map(j=>j.id).join(',')+')',{method:'PATCH',body:JSON.stringify({inputs_clean:true})});
  }
