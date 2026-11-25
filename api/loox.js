@@ -1,3 +1,4 @@
+import {freeImageAvailability,launchBlocked} from '../lib/launch-availability.js';
 import {engineStatus,engineCancel,engineRecord,engineSnapshot} from '../src/ai/engine.js';
 import {accountOverview} from '../lib/account-overview.js';
 import {revokeSessions} from '../lib/account-sessions.js';
@@ -67,8 +68,11 @@ async function publicMedia(req,res){
  res.setHeader('Cache-Control','no-store, max-age=0');return res.json({url,expires_in:300});
 }
 
+import {launch,launchCatalog,premiumMessage,videoMessage} from '../src/config/launch.js';
 export default handler(async(req,res)=>{
  const action=req.query.action;
+ if(['checkout','recharge_checkout','portal'].includes(action))need(launch.payments,503,premiumMessage);
+ if(['cloud_video_job','video_quote'].includes(action))need(launch.video,503,videoMessage);
  if(typeof action==='string'&&action.startsWith('control_')){req.query.action=action.slice(8);return controlAction(req,res);}
  if(action==='health'){method(req,'GET');need(authReady(),503,'Service setup pending.');await rows('plans',{select:'id',limit:'1'});return res.json({ok:true,service:'loox-api'});}
  if(action==='billing_catalog'){method(req,'GET');return res.json(await billingCatalog());}
@@ -84,10 +88,13 @@ export default handler(async(req,res)=>{
   if(authReady())[plans,operations,localWorker]=await Promise.all([rows('plans',{select:'id,price_cents,credits,cadence'}),rows('operations',{select:'id,cost'}),rows('local_worker_health',{id:'eq.1',select:'modes,last_seen'}).then(x=>x[0]).catch(()=>null)]);
   const zImageOnline=Boolean(aiReady()&&localWorker?.modes?.includes('generate_z_image')&&Date.now()-Date.parse(localWorker.last_seen)<90000);
   const engine=await engineSnapshot().catch(()=>null);
-  const payload={workspace:{assets:r2Ready(),promptEnhancer:Boolean(env.GEMINI_API_KEY)},auth:authReady(),ai:aiReady(),billing:billingReady(),checkoutPlans:billingReady()?checkoutPlans():[],r2Media:{configured:r2Ready(),imagesOnly:true},testBilling:env.LEMON_MODE==='test',annualBillingEnabled:annualBillingEnabled(),plans:plans.filter(p=>p.id!=='lifetime'&&(annualBillingEnabled()||p.cadence!=='year')),operations,rewards:{credits:5,interval_hours:12,balance_cap:50},local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&(cloudflareImageReady()||localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000)),code:aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000?'B8':aiReady()&&cloudflareImageReady()?'A8':'--',referenceAvailable:Boolean(aiReady()&&localWorker?.modes?.includes('generate_reference')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations,engine).map(m=>m.id==='z_image_turbo'?{...m,cost:operations.find(o=>o.id==='generate_z_image')?.cost??m.cost,available:zImageOnline,status:zImageOnline?'available':'coming_soon',code:zImageOnline?'B8':null,reason:zImageOnline?'Ready to create.':'Coming soon.'}:m).concat([{id:'flux2_klein_local_edit',name:'FLUX.2 Klein 4B · Image Edit',provider:'LOOX Studio',description:'Precise reference-guided image editing',cost:operations.find(o=>o.id==='generate_flux2_klein_edit')?.cost??3,operation:'generate_flux2_klein_edit',available:Boolean(aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000?'available':'temporarily_unavailable',reason:'Select a reference image and enter an editing prompt. This editing mode may be temporarily unavailable.'}]),videoModels:videoCatalog(operations,engine),faceSwap:{available:Boolean(env.LOOX_FACE_SWAP_LICENSED==='true'&&aiReady()&&localWorker?.modes?.includes('face_swap')&&Date.now()-Date.parse(localWorker.last_seen)<90000),cost:operations.find(o=>o.id==='face_swap')?.cost??6},
+  const payload={workspace:{assets:r2Ready(),promptEnhancer:Boolean(env.GEMINI_API_KEY)},auth:authReady(),ai:aiReady(),billing:billingReady(),checkoutPlans:billingReady()?checkoutPlans():[],r2Media:{configured:r2Ready(),imagesOnly:true},testBilling:env.LEMON_MODE==='test',annualBillingEnabled:annualBillingEnabled(),plans:plans.filter(p=>p.id!=='lifetime'&&(annualBillingEnabled()||p.cadence!=='year')),operations,rewards:{credits:5,interval_hours:12,balance_cap:50},local:{id:'flux',name:'FLUX.1 Schnell',cost:operations.find(o=>o.id==='generate')?.cost||3,available:Boolean(aiReady()&&(cloudflareImageReady()||localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000)),code:aiReady()&&localWorker?.modes?.includes('generate')&&Date.now()-Date.parse(localWorker.last_seen)<90000?'B8':aiReady()&&cloudflareImageReady()?'A8':'--',referenceAvailable:Boolean(aiReady()&&localWorker?.modes?.includes('generate_reference')&&Date.now()-Date.parse(localWorker.last_seen)<90000)},models:imageCatalog(operations,engine).map(m=>m.id==='z_image_turbo'?{...m,cost:operations.find(o=>o.id==='generate_z_image')?.cost??m.cost,available:zImageOnline,status:zImageOnline?'available':'temporarily_offline',code:zImageOnline?'B8':null,reason:zImageOnline?'Ready to create.':'Coming soon.'}:m).concat([{id:'flux2_klein_local_edit',name:'FLUX.2 Klein 4B · Image Edit',provider:'LOOX Studio',description:'Precise reference-guided image editing',cost:operations.find(o=>o.id==='generate_flux2_klein_edit')?.cost??3,operation:'generate_flux2_klein_edit',available:Boolean(aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000),status:aiReady()&&localWorker?.modes?.includes('generate_flux2_klein_edit')&&Date.now()-Date.parse(localWorker.last_seen)<90000?'available':'temporarily_unavailable',reason:'Select a reference image and enter an editing prompt. This editing mode may be temporarily unavailable.'}]),videoModels:videoCatalog(operations,engine),faceSwap:{available:Boolean(env.LOOX_FACE_SWAP_LICENSED==='true'&&aiReady()&&localWorker?.modes?.includes('face_swap')&&Date.now()-Date.parse(localWorker.last_seen)<90000),cost:operations.find(o=>o.id==='face_swap')?.cost??6},
    ...(authReady()?{url:env.SUPABASE_URL,key:env.SUPABASE_PUBLISHABLE_KEY}:{})};
   const blocked=authReady()?await Promise.all([rows('model_circuits',{select:'operation',paused_until:'gt.'+new Date().toISOString()}),rows('cost_controls',{select:'disabled_operations'})]).then(([circuits,controls])=>[...circuits.map(c=>c.operation),...(controls[0]?.disabled_operations||[])]).catch(()=>[]):[];
-  return res.json(applyModelHealth(payload,blocked));
+  const live=await freeImageAvailability(localWorker,blocked);
+  payload.local={...payload.local,...live};delete payload.local.zImage;delete payload.local.klein;
+  payload.models=payload.models.map(m=>m.id==='z_image_turbo'?{...m,...live.zImage}:m.id==='flux2_klein_local_edit'?{...m,...live.klein}:m);
+  return res.json(launchCatalog(applyModelHealth(payload,blocked)));
  }
  // Public, intentionally provider-neutral routing status for the image model picker.
  // No API keys, machine hostnames, or infrastructure details are returned.
@@ -95,11 +102,7 @@ export default handler(async(req,res)=>{
   method(req,'GET');
   let worker=null;
   if(aiReady())[worker]=(await rows('local_worker_health',{id:'eq.1',select:'modes,last_seen'}).catch(()=>[]));
-  const healthy=Boolean(aiReady()&&worker&&Date.now()-Date.parse(worker.last_seen)<90000);
-  const local=healthy&&worker.modes?.includes('generate');
-  const available=Boolean(local||aiReady()&&cloudflareImageReady());
-  const zImageOnline=Boolean(healthy&&worker.modes?.includes('generate_z_image'));
-  return res.json({code:local?'B8':available?'A8':'--',available,referenceAvailable:Boolean(healthy&&worker.modes?.includes('generate_reference')),zImage:{available:zImageOnline,code:zImageOnline?'B8':null,status:zImageOnline?'available':'coming_soon'}});
+  return res.json(await freeImageAvailability(worker,await launchBlocked()));
  }
  if(action==='public_plan'){method(req,'GET');need(/^[a-f0-9-]{36}$/i.test(String(req.query.id||'')),400,'Invalid profile.');return res.json({plan:await memberTier(req.query.id)});}
  if(action==='public_media'){method(req,'GET');return publicMedia(req,res);}

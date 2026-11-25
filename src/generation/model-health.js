@@ -1,6 +1,6 @@
 // The database reservation guard remains authoritative; this only explains availability.
 export function applyModelHealth(config,operations){
- const paused=new Set(operations),unavailable={available:false,status:'temporarily_unavailable',reason:'Temporarily unavailable. Try another model.'};
+ const paused=new Set(operations),unavailable={available:false,status:'maintenance',reason:'Maintenance. Please try another available model.'};
  if(paused.has('generate')){config.local.available=false;config.local.code='--';}
  if(paused.has('generate_reference'))config.local.referenceAvailable=false;
  config.models=config.models.map(m=>paused.has(m.operation)?{...m,...unavailable}:m);
