@@ -36,3 +36,11 @@ test('free model health follows heartbeat, quota and maintenance',async t=>{
  const offline=await freeImageAvailability({...live,last_seen:'2020-01-01'});assert.equal(offline.zImage.status,'temporarily_offline');assert.equal(offline.referenceAvailable,false);
  const paused=await freeImageAvailability(live,['generate','generate_z_image']);assert.equal(paused.available,false);assert.equal(paused.status,'maintenance');assert.equal(paused.zImage.available,false);
 });
+
+test('future release controls remain independent and individual premium locks take precedence',()=>{
+ const config=()=>({billing:true,checkoutPlans:['pro'],local:{available:true},models:[{id:'paid',available:true,cost:9}],videoModels:[{id:'video',available:true}]});
+ const policy={...launch,payments:true,subscriptions:false,premiumImages:true,video:false,models:{...launch.models,paid:true}};
+ const c=launchCatalog(config(),policy);assert.equal(c.billing,true);assert.deepEqual(c.checkoutPlans,[]);assert.equal(c.models[0].available,true);assert.equal(c.videoModels[0].available,false);
+ const videoOnly=launchCatalog(config(),{...policy,premiumImages:false,video:true});assert.equal(videoOnly.models[0].available,false);assert.equal(videoOnly.videoModels[0].available,true);
+ const locked=launchCatalog(config(),{...policy,models:{...policy.models,paid:false}});assert.equal(locked.models[0].available,false);
+});

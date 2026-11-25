@@ -4,11 +4,11 @@ import {launch} from '../config/launch.js';
 const origin='https://api.replicate.com/v1/';
 const identifier=/^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+$/;
 const predictionId=/^[a-zA-Z0-9_-]{1,100}$/;
-export const paidGenerationApproved=()=>launch.premiumImages&&env.LOOX_PAID_GENERATION_APPROVED==='true';
+export const paidGenerationApproved=()=>(launch.premiumImages||launch.video)&&env.LOOX_PAID_GENERATION_APPROVED==='true';
 export const replicateConfigured=()=>Boolean(env.REPLICATE_API_TOKEN?.trim());
 export class SubmissionUncertain extends Problem{constructor(){super(503,'The provider may have accepted this request. Do not submit it again; check generation history.');this.uncertain=true;}}
 export async function providerRequest(path,options={},request=fetch){
- if(options.method==='POST'&&(/(?:^|\/)predictions$/.test(path)))need(launch.premiumImages,503,'Premium models are Coming Soon. No credits used.');
+ if(options.method==='POST'&&(/(?:^|\/)predictions$/.test(path)))need(launch.premiumImages||launch.video,503,'Premium models are Coming Soon. No credits used.');
  need(!path.startsWith('/')&&!path.includes('..')&&!path.includes('?')&&/^[\w./-]+$/.test(path),400,'Invalid provider path.');
  need(replicateConfigured(),503,'Cloud generation is not configured.');
  return request(origin+path,{...options,headers:{Authorization:'Bearer '+env.REPLICATE_API_TOKEN,...options.headers},redirect:'error',signal:AbortSignal.timeout(20000)});

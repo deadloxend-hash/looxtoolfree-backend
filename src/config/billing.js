@@ -1,7 +1,7 @@
 import {launch} from './launch.js';
 // All purchase gates are opt-in. Historic subscription events use a separate gate.
 export const annualBillingEnabled=()=>process.env.ANNUAL_BILLING_ENABLED==='true';
-export const paymentsEnabled=()=>launch.payments&&launch.subscriptions&&process.env.PAYMENTS_ENABLED==='true'&&(process.env.PAYMENT_PROVIDER||'lemonsqueezy')==='lemonsqueezy';
+export const paymentsEnabled=()=>launch.payments&&process.env.PAYMENTS_ENABLED==='true'&&(process.env.PAYMENT_PROVIDER||'lemonsqueezy')==='lemonsqueezy';
 export const topupsEnabled=()=>launch.creditPurchases&&paymentsEnabled()&&process.env.CREDIT_TOPUPS_ENABLED==='true'&&process.env.TOPUP_MARGIN_APPROVED==='true';
 export const flags=()=>({annualBillingEnabled:annualBillingEnabled(),paymentsEnabled:paymentsEnabled(),creditTopupsEnabled:topupsEnabled(),provider:'lemonsqueezy'});
 export const creditPolicy={allocation:'Shared wallet; grants and deductions are recorded in transaction order.',spending:'Credits are fungible in the existing shared wallet; every generation reserves credits atomically.',expiration:'Existing and proposed purchased credits do not expire. Unused subscription credits roll over.',refunds:'Verified refunds reverse the corresponding allocation. Spent refunded credits create debt and block generation until settled.',starter:'25 credits once after verified signup. Existing manual return rewards remain separate.'};

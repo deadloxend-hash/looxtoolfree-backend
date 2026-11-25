@@ -1,3 +1,4 @@
+import {launch} from '../config/launch.js';
 import sharp from 'sharp';
 import {env,need,Problem,rows,rpc,supa,mac,uuid} from '../../lib/core.js';
 import {saveGeneratedMedia,mediaURL,workerInputURL,userKey} from '../../lib/media-store.js';
@@ -10,7 +11,7 @@ export function engineCatalog(kind,operations=[],snapshot=null){return registry.
  const configured=(m.kind==='image'?[undefined]:m.durations).every(d=>operations.some(o=>o.id===operationFor(m,d)));
  const verified=Boolean(policy?.schema?.input&&policy.schema_version&&fresh(policy.schema_verified_at));
  const priced=policy?.pricing?{...m,rates:policy.pricing,priceVerified:true,verifiedAt:policy.pricing_verified_at}:m;
- const available=Boolean(m.model&&configured&&paidGenerationApproved()&&replicateConfigured()&&snapshot?.config?.enabled&&snapshot?.provider?.enabled&&policy?.enabled&&policy.acceptance_verified_at&&verified&&priced.priceVerified&&fresh(priced.verifiedAt));
+ const available=Boolean((m.kind==='image'?launch.premiumImages:launch.video)&&launch.models[m.id]!==false&&m.model&&configured&&paidGenerationApproved()&&replicateConfigured()&&snapshot?.config?.enabled&&snapshot?.provider?.enabled&&policy?.enabled&&policy.acceptance_verified_at&&verified&&priced.priceVerified&&fresh(priced.verifiedAt));
  return {id:m.id,name:m.name,provider:'LOOX Cloud',operation:m.operation,cost:operations.find(o=>o.id===m.operation)?.cost??(Object.values(costs).some(Number.isSafeInteger)?Math.min(...Object.values(costs).filter(Number.isSafeInteger)):null),creditCosts:costs,minimumPlan:policy?.minimum_plan||m.minimumPlan,description:m.kind==='image'?'Image generation':'Video generation',available,status:available?'available':'coming_soon',reason:available?'Ready to generate.':'Cloud generation is being prepared for a future launch. No credits used.',durationOptions:verified?m.durations:[],imageRequired:!!m.imageRequired,
  settings:verified?m.allowedSettings:{},capabilities:{...(verified?m.capabilities:{ratios:[],startFrame:false,endFrame:false}),durations:verified?m.durations:[],resolution:verified?m.inputDefaults.resolution||'Model default':null,imageReference:verified&&m.capabilities.startFrame,schemaVerified:verified}};
  });}
@@ -18,6 +19,7 @@ async function record(job,user){return (await rows('engine_jobs',{job_id:'eq.'+j
 export async function engineStart(user,body,{acceptance=false}={}){
  need(paidGenerationApproved(),503,'Paid cloud generation is not approved. No credits used.');
  const model=findModel(body.model);need(model?.model&&!model.localOnly,503,'This exact cloud model is not verified. No credits used.');
+ need((model.kind==='image'?launch.premiumImages:launch.video)&&launch.models[model.id]!==false,503,'This model is Coming Soon. No credits used.');
  need(!model.fallbackOnly||env.LOOX_FLUX_PAID_FALLBACK==='true'&&body.paidFallback===true,503,'Paid fallback is disabled.');
  need(uuid.test(body.requestId),400,'Invalid request ID.');
  const settings=modelSettings(model,body);
