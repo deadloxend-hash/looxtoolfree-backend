@@ -123,7 +123,7 @@ export default handler(async(req,res)=>{
   method(req,'GET');
   const [worker]=await rows('local_worker_health',{id:'eq.1',select:'modes,last_seen'});
   const online=Boolean(aiReady()&&worker&&Date.now()-Date.parse(worker.last_seen)<90000);
-  return res.json({online,model:'FLUX.1 Schnell + Wan 2.1 T2V',image:online&&worker.modes.includes('generate'),video:online&&worker.modes.includes('generate_video')});
+  return res.json({online,model:'FLUX.1 Schnell + Wan 2.1 T2V',image:online&&worker.modes.includes('generate'),video:launch.video&&online&&worker.modes.includes('generate_video')});
  }
  if(action==='quota'){
   method(req,'GET');

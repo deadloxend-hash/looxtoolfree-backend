@@ -1,3 +1,4 @@
+import {launch} from '../src/config/launch.js';
 import {verifyWorkerSignature} from '../src/security/worker-signature.js';
 import {env,need,handler,method,json,rows,rpc,supa,equal,mac,uuid,Problem,raw} from '../lib/core.js';
 import {userKey,verifyUploadedMedia} from '../lib/media-store.js';
@@ -41,7 +42,8 @@ export default handler(async(req,res)=>{
     const supported=modes(b.modes);
     need(supported.length>0,400,'No workflow is installed.');
     await rpc('local_ping',{p_modes:supported});
-    const job=await rpc('local_claim',{p_modes:supported});
+    const allowed=supported.filter(mode=>mode!=='generate_video'||launch.video);
+    const job=allowed.length?await rpc('local_claim',{p_modes:allowed}):null;
     return res.json({job:job||null});
   }
   if(action==='upload'){
