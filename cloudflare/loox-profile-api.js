@@ -267,9 +267,12 @@ async function react(db,me,p,kind){
  return {post_id:id,on:p.on===true};
 }
 async function notifications(db,url,me){
+ if(!me?.id)bad(401,'Sign in to continue.');
+ if(url.searchParams.get('summary')==='1'){const count=await stmt(db,'SELECT COUNT(*) n FROM notifications WHERE user_id=? AND is_read=0',me.id).first();return {unread_count:Number(count?.n)||0,can_delete:true}}
  const offset=Math.min(10000,Math.max(0,Number(url.searchParams.get('offset'))||0));
- const rows=await stmt(db,'SELECT n.*,p.username,p.display_name,p.avatar_path,post.caption post_caption,post.media_path post_media_path,post.media_type post_media_type,cm.body comment_body FROM notifications n LEFT JOIN profiles p ON p.user_id=n.actor_id LEFT JOIN posts post ON post.id=n.post_id LEFT JOIN comments cm ON cm.id=n.comment_id WHERE n.user_id=? ORDER BY n.created_at DESC LIMIT 26 OFFSET ?',me.id,offset).all();
- return {items:rows.results.slice(0,25),has_more:rows.results.length>25};
+ const rows=await stmt(db,'SELECT n.*,p.username,p.display_name,p.avatar_path,post.caption post_caption,post.media_path post_media_path,post.media_type post_media_type,cm.body comment_body FROM notifications n LEFT JOIN profiles p ON p.user_id=n.actor_id LEFT JOIN posts post ON post.id=n.post_id LEFT JOIN comments cm ON cm.id=n.comment_id WHERE n.user_id=? ORDER BY n.created_at DESC,n.id DESC LIMIT 26 OFFSET ?',me.id,offset).all();
+ const count=await stmt(db,'SELECT COUNT(*) n FROM notifications WHERE user_id=? AND is_read=0',me.id).first();
+ return {items:rows.results.slice(0,25),has_more:rows.results.length>25,unread_count:Number(count?.n)||0,can_delete:true};
 }
 async function collectionList(db,url,me){
  const id=url.searchParams.get('id'),userId=url.searchParams.get('user_id');
@@ -440,6 +443,7 @@ async function commentsList(db,url,me){
  const id=needId(url.searchParams.get('post_id'));
  await commentPermission(db,id,me);
  const offset=Math.min(10000,Math.max(0,Number(url.searchParams.get('offset'))||0)),kind=url.searchParams.get('kind')||'parents';
+ if(kind==='focus'){const target=await stmt(db,'SELECT id,post_id,parent_id,user_id,body,created_at FROM comments WHERE id=? AND post_id=?',needId(url.searchParams.get('id')),id).first();if(!target)return {items:[],has_more:false};const parent=target.parent_id?await stmt(db,'SELECT id,post_id,parent_id,user_id,body,created_at FROM comments WHERE id=? AND post_id=?',target.parent_id,id).first():null;return {items:[parent,target].filter(Boolean),has_more:false};}
  if(kind==='parents'){
   const rows=await stmt(db,'SELECT id,post_id,parent_id,user_id,body,created_at FROM comments WHERE post_id=? AND parent_id IS NULL ORDER BY created_at ASC,id ASC LIMIT 15 OFFSET ?',id,offset).all();
   return {items:rows.results,has_more:rows.results.length===15};
@@ -487,9 +491,17 @@ async function commentDelete(db,url,me){
  return {deleted:true};
 }
 async function markNotifications(db,me,data){
+ if(!me?.id)bad(401,'Sign in to continue.');
  if(data.all===true)await stmt(db,'UPDATE notifications SET is_read=1 WHERE user_id=?',me.id).run();
  else await stmt(db,'UPDATE notifications SET is_read=1 WHERE id=? AND user_id=?',needId(data.id),me.id).run();
- return {saved:true};
+ const count=await stmt(db,'SELECT COUNT(*) n FROM notifications WHERE user_id=? AND is_read=0',me.id).first();
+ return {saved:true,unread_count:Number(count?.n)||0};
+}
+async function deleteNotification(db,me,data){
+ if(!me?.id)bad(401,'Sign in to continue.');
+ await stmt(db,'DELETE FROM notifications WHERE id=? AND user_id=?',needId(data.id),me.id).run();
+ const count=await stmt(db,'SELECT COUNT(*) n FROM notifications WHERE user_id=? AND is_read=0',me.id).first();
+ return {deleted:true,unread_count:Number(count?.n)||0};
 }
 async function readMedia(db,r2,url,me,request){
  const id=needId(url.searchParams.get('id')),type=url.searchParams.get('type');
@@ -736,6 +748,7 @@ export default {
    else if(path==='save'&&request.method==='POST')response=send(await react(env.DB,me,await request.json(),'save'));
    else if(path==='notifications'&&request.method==='GET')response=send(await notifications(env.DB,url,me));
    else if(path==='notifications'&&request.method==='PATCH')response=send(await markNotifications(env.DB,me,await request.json()));
+   else if(path==='notifications'&&request.method==='DELETE')response=send(await deleteNotification(env.DB,me,await request.json()));
    else if(path==='media'&&request.method==='GET')response=await readMedia(env.DB,env.MEDIA,url,me,request);
    else if(['avatar','cover'].includes(path)&&request.method==='POST')response=send(await upload(env.DB,env.MEDIA,request,me,path,env),201);
    else if(['avatar','cover'].includes(path)&&request.method==='DELETE')response=send(await removeMedia(env.DB,me,path));

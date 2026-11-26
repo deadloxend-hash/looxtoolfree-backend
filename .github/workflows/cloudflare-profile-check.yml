@@ -30,7 +30,7 @@ jobs:
           }
           JS
       - name: Check creator self-likes, privacy and notification regression
-        run: node --test test/profile-self-like.test.js
+        run: node --test test/profile-self-like.test.js test/profile-notifications.test.js
       - name: Verify deployed Cloudflare API health
         run: |
           set -euo pipefail
