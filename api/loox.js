@@ -1,3 +1,5 @@
+import {googleAvatar} from '../lib/google-avatar.js';
+import {manageAuthenticator} from '../lib/auth-factors.js';
 import {freeImageAvailability,launchBlocked} from '../lib/launch-availability.js';
 import {engineStatus,engineCancel,engineRecord,engineSnapshot} from '../src/ai/engine.js';
 import {accountOverview} from '../lib/account-overview.js';
@@ -117,6 +119,8 @@ export default handler(async(req,res)=>{
  if(action==='engine_cancel'){method(req,'POST');await limit(u,'engine_cancel',10,60);return res.json(await engineCancel(u,json(req).id));}
  if(action==='account'){method(req,'GET');return res.json(await accountOverview(u));}
  if(action==='revoke_sessions'){method(req,'POST');await limit(u,'revoke_sessions',5,600);return res.json(await revokeSessions(u,json(req),req.looxAuthClaims,req.headers.authorization));}
+ if(action==='auth_avatar'){method(req,'GET');await limit(u,'auth_avatar',20,60);const avatar=await googleAvatar(u);res.setHeader('Content-Type',avatar.mime);return res.send(avatar.bytes);}
+ if(action==='auth_factor'){method(req,'POST');await limit(u,'auth_factor',5,600);return res.json(await manageAuthenticator(u,json(req),req.looxAuthClaims,req.headers.authorization));}
  if(action==='security_summary'){method(req,'GET');await limit(u,'security_summary',20,60);return res.json(await securitySummary(u,req.looxAuthClaims));}
  if(action==='export_account'){method(req,'POST');await limit(u,'export_account',3,600);const body=json(req);return res.json(await completeDataExport(u,body.password,req.looxAuthClaims,req.headers.authorization));}
  if(action==='gpu'){
