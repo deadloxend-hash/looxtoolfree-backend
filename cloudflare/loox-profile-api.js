@@ -26,6 +26,8 @@ async function limitActions(db,id,action,maxPerMinute){
 function cors(request,response){
  const h=new Headers(response.headers),o=request.headers.get('Origin');
  if(o===ORIGIN){h.set('Access-Control-Allow-Origin',ORIGIN);h.set('Vary','Origin');}
+ h.set('Strict-Transport-Security','max-age=31536000');
+ if(!(response.headers.get('Content-Type')||'').startsWith('image/')&&!(response.headers.get('Content-Type')||'').startsWith('video/'))h.set('Content-Security-Policy',"default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
  h.set('X-Content-Type-Options','nosniff');
  h.set('Referrer-Policy','no-referrer');
  h.set('X-Frame-Options','DENY');
@@ -47,6 +49,7 @@ async function user(request,env,required=true){
  if(!validId(u.id)||u.is_anonymous||!u.email_confirmed_at)bad(403,'Verify your account.');
  let claims;try{const payload=auth.slice(7).split('.')[1].replaceAll('-','+').replaceAll('_','/');claims=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload),c=>c.charCodeAt(0))));}catch{bad(401,'Invalid session token.');}
  if(claims.sub!==u.id||claims.iss!==env.SUPABASE_URL.replace(/\/$/,'')+'/auth/v1'||!(claims.aud==='authenticated'||Array.isArray(claims.aud)&&claims.aud.includes('authenticated'))||!Number.isFinite(claims.exp)||claims.exp<=Date.now()/1000||claims.nbf&&claims.nbf>Date.now()/1000)bad(401,'Please sign in again.');
+ if((u.factors||[]).some(f=>f.status==='verified')&&claims.aal!=='aal2')bad(403,'Complete authenticator verification before accessing your account.');
  return {id:u.id,data:u,claims};
 }
 const adminAllowed=me=>me?.data?.app_metadata?.loox_template_admin===true&&me?.claims?.aal==='aal2'&&me.claims.exp>Date.now()/1000;
@@ -554,6 +557,27 @@ function imageType(bytes,type){
  if(type==='image/webp')return bytes.length>12&&String.fromCharCode(...bytes.subarray(0,4))==='RIFF'&&String.fromCharCode(...bytes.subarray(8,12))==='WEBP';
  return false;
 }
+export function profileImageDimensions(bytes,type){
+ const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);let width=0,height=0;
+ if(type==='image/png'&&bytes.length>=24){
+  width=view.getUint32(16);height=view.getUint32(20);
+  for(let at=8,n=0;at+12<=bytes.length&&n++<4096;){const size=view.getUint32(at);const name=String.fromCharCode(...bytes.subarray(at+4,at+8));if(name==='acTL')bad(415,'Animated profile images are not supported.');if(size>bytes.length-at-12)bad(415,'Invalid PNG structure.');at+=size+12;}
+ }else if(type==='image/jpeg'){
+  for(let at=2,n=0;at+4<=bytes.length&&n++<4096;){
+   if(bytes[at++]!==255)bad(415,'Invalid JPEG structure.');while(bytes[at]===255)at++;
+   const marker=bytes[at++];if(marker===217||marker===218)break;
+   const length=view.getUint16(at);if(length<2||at+length>bytes.length)bad(415,'Invalid JPEG structure.');
+   if([192,193,194,195,197,198,199,201,202,203,205,206,207].includes(marker)&&length>=7){height=view.getUint16(at+3);width=view.getUint16(at+5);break;}at+=length;
+  }
+ }else if(type==='image/webp'&&bytes.length>=25){
+  const chunk=String.fromCharCode(...bytes.subarray(12,16));
+  if(chunk==='VP8X'&&bytes.length>=30){if(bytes[20]&2)bad(415,'Animated profile images are not supported.');width=1+bytes[24]+(bytes[25]<<8)+(bytes[26]<<16);height=1+bytes[27]+(bytes[28]<<8)+(bytes[29]<<16);}
+  else if(chunk==='VP8L'&&bytes[20]===47){const bits=view.getUint32(21,true);width=(bits&16383)+1;height=((bits>>>14)&16383)+1;}
+  else if(chunk==='VP8 '&&bytes.length>=30&&bytes[23]===157&&bytes[24]===1&&bytes[25]===42){width=view.getUint16(26,true)&16383;height=view.getUint16(28,true)&16383;}
+ }
+ if(!width||!height||width>8192||height>8192||width*height>16000000)bad(415,'Profile image dimensions exceed the supported limit.');
+ return {width,height};
+}
 async function upload(db,r2,request,me,kind,env){
  await ensureSelf(db,me);
  const type=(request.headers.get('Content-Type')||'').split(';')[0].trim().toLowerCase();
@@ -563,6 +587,7 @@ async function upload(db,r2,request,me,kind,env){
  const bytes=await limitedBody(request,max);
  if(!bytes.byteLength)bad(400,'Choose an image.');
  if(!imageType(bytes,type))bad(400,'Invalid image signature.');
+ profileImageDimensions(bytes,type);
  const hourly=await stmt(db,'SELECT COUNT(*) n FROM image_uploads WHERE user_id=? AND created_at>=?',me.id,new Date(Date.now()-3600000).toISOString()).first();
  if(Number(hourly.n)>=8)bad(429,'Profile image uploads limited. Try again later.');
  const key='public/avatars/'+me.id+'/'+(kind==='cover'?'banner-':'')+crypto.randomUUID()+'.'+({ 'image/webp':'webp','image/png':'png','image/jpeg':'jpg' }[type]);
@@ -589,6 +614,14 @@ async function limitedBody(request,max){
  const reader=request.body?.getReader();let size=0;const chunks=[];
  if(reader)for(;;){const item=await reader.read();if(item.done)break;size+=item.value.byteLength;if(size>max){await reader.cancel();bad(413,'Request exceeds the supported size.');}chunks.push(item.value);}
  const data=new Uint8Array(size);let offset=0;for(const part of chunks){data.set(part,offset);offset+=part.length;}return data;
+}
+async function boundedJSON(request){
+ if(!/^application\/json\b/i.test(request.headers.get('Content-Type')||''))bad(415,'Send JSON.');
+ const maximum=65536,declared=Number(request.headers.get('Content-Length'));
+ if(Number.isFinite(declared)&&declared>maximum)bad(413,'Request exceeds the supported size.');
+ let body;try{body=JSON.parse(new TextDecoder().decode(await limitedBody(request,maximum)));}catch(error){if(error instanceof HttpError)throw error;bad(400,'Invalid JSON.');}
+ if(!body||typeof body!=='object'||Array.isArray(body))bad(400,'Send a JSON object.');
+ return body;
 }
 async function assertWritableAccount(db,id){
  if(await stmt(db,'SELECT user_id FROM account_lifecycle WHERE user_id=?',id).first())bad(409,'Account deletion is in progress.');
@@ -692,7 +725,7 @@ async function approvedDeletion(env,request,me){
 
 export default {
  // Keep minimal deletion markers to prevent late requests recreating removed records.
- async scheduled(event,env){await stmt(env.DB,"DELETE FROM action_windows WHERE user_id IN (SELECT 'privacy-delete:'||user_id FROM account_lifecycle WHERE expires_at<?)",Math.floor(Date.now()/1000)).run();},
+ async scheduled(event,env){await env.DB.batch([stmt(env.DB,'DELETE FROM action_windows WHERE window_start<?',Math.floor(Date.now()/60000)-2880),stmt(env.DB,'DELETE FROM image_uploads WHERE created_at<?',new Date(Date.now()-7*86400000).toISOString())]);},
  async fetch(request,env){
   try{
    const url=new URL(request.url),path=url.pathname.replace(/^\/v1\/?/,'');
@@ -702,6 +735,12 @@ export default {
    }
    if(request.headers.has('Origin')&&request.headers.get('Origin')!==ORIGIN)bad(403,'Origin is not allowed.');
    if(path==='health'&&request.method==='GET')return cors(request,send({ok:true,storage:'cloudflare-d1-r2',version:2,privacy:{export:true,cleanup:true}}));
+   const ip=request.headers.get('CF-Connecting-IP');
+   if(ip){
+    const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(new Date().toISOString().slice(0,10)+':'+ip));
+    const key='ip:'+Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
+    await limitActions(env.DB,key,request.method==='GET'?'public-read':'request',request.method==='GET'?240:40);
+   }
    const anonymous=['profile','connections','profiles','feed','replies','media','discover','post','comments','collections'].includes(path)&&request.method==='GET';
    const me=await user(request,env,!anonymous);
    if(me&&path!=='account-delete'){
@@ -718,12 +757,12 @@ export default {
     return cors(request,send(await accountCleanup(env.DB,env.MEDIA,me.id)));
    }
    if(path==='profile'&&request.method==='GET')response=send(await profileGet(env.DB,url,me));
-   else if(path==='profile'&&request.method==='PATCH')response=send(await profileSave(env.DB,me,await request.json()));
-   else if(path==='privacy'&&request.method==='PATCH')response=send(await privacySave(env.DB,me,await request.json()));
-   else if(path==='follow'&&request.method==='POST')response=send(await followSave(env.DB,me,await request.json()));
+   else if(path==='profile'&&request.method==='PATCH')response=send(await profileSave(env.DB,me,await boundedJSON(request)));
+   else if(path==='privacy'&&request.method==='PATCH')response=send(await privacySave(env.DB,me,await boundedJSON(request)));
+   else if(path==='follow'&&request.method==='POST')response=send(await followSave(env.DB,me,await boundedJSON(request)));
    else if(path==='connections'&&request.method==='GET')response=send(await connections(env.DB,url,me));
    else if(path==='profiles'&&request.method==='GET')response=send(await profileBatch(env.DB,url,me));
-   else if(path==='pin'&&request.method==='POST')response=send(await pinSave(env.DB,me,await request.json()));
+   else if(path==='pin'&&request.method==='POST')response=send(await pinSave(env.DB,me,await boundedJSON(request)));
    else if(path==='feed'&&request.method==='GET')response=send(await feed(env.DB,url,me));
    else if(path==='discover'&&request.method==='GET')response=send(await discover(env.DB,url,me));
    else if(path==='post'&&request.method==='GET'){
@@ -731,24 +770,24 @@ export default {
     if(!post)bad(404,'Post unavailable.');
     response=send(post);
    }
-   else if(path==='publish'&&request.method==='POST')response=send(await publish(env.DB,env,request,me,await request.json()),201);
+   else if(path==='publish'&&request.method==='POST')response=send(await publish(env.DB,env,request,me,await boundedJSON(request)),201);
    else if(path==='review-queue'&&request.method==='GET')response=send(await reviewQueue(env.DB,me));
    else if(path==='admin-stats'&&request.method==='GET')response=send(await adminStats(env.DB,me));
-   else if(path==='review'&&request.method==='POST')response=send(await reviewPost(env.DB,me,await request.json()));
+   else if(path==='review'&&request.method==='POST')response=send(await reviewPost(env.DB,me,await boundedJSON(request)));
    else if(path==='manage'&&request.method==='GET')response=send(await managePosts(env.DB,me,url));
-   else if(path==='manage'&&request.method==='POST')response=send(await editPost(env.DB,env,request,me,await request.json()));
+   else if(path==='manage'&&request.method==='POST')response=send(await editPost(env.DB,env,request,me,await boundedJSON(request)));
    else if(path==='collections'&&request.method==='GET')response=send(await collectionList(env.DB,url,me));
-   else if(path==='collections'&&['POST','PATCH','DELETE'].includes(request.method))response=send(await collectionSave(env.DB,me,await request.json(),request.method));
-   else if(path==='collection-item'&&['POST','DELETE'].includes(request.method))response=send(await collectionItem(env.DB,me,await request.json(),request.method));
+   else if(path==='collections'&&['POST','PATCH','DELETE'].includes(request.method))response=send(await collectionSave(env.DB,me,await boundedJSON(request),request.method));
+   else if(path==='collection-item'&&['POST','DELETE'].includes(request.method))response=send(await collectionItem(env.DB,me,await boundedJSON(request),request.method));
    else if(path==='comments'&&request.method==='GET')response=send(await commentsList(env.DB,url,me));
-   else if(path==='comments'&&request.method==='POST')response=send(await commentCreate(env.DB,me,await request.json()),201);
+   else if(path==='comments'&&request.method==='POST')response=send(await commentCreate(env.DB,me,await boundedJSON(request)),201);
    else if(path==='comments'&&request.method==='DELETE')response=send(await commentDelete(env.DB,url,me));
    else if(path==='replies'&&request.method==='GET')response=send(await replies(env.DB,url,me));
-   else if(path==='like'&&request.method==='POST')response=send(await react(env.DB,me,await request.json(),'like'));
-   else if(path==='save'&&request.method==='POST')response=send(await react(env.DB,me,await request.json(),'save'));
+   else if(path==='like'&&request.method==='POST')response=send(await react(env.DB,me,await boundedJSON(request),'like'));
+   else if(path==='save'&&request.method==='POST')response=send(await react(env.DB,me,await boundedJSON(request),'save'));
    else if(path==='notifications'&&request.method==='GET')response=send(await notifications(env.DB,url,me));
-   else if(path==='notifications'&&request.method==='PATCH')response=send(await markNotifications(env.DB,me,await request.json()));
-   else if(path==='notifications'&&request.method==='DELETE')response=send(await deleteNotification(env.DB,me,await request.json()));
+   else if(path==='notifications'&&request.method==='PATCH')response=send(await markNotifications(env.DB,me,await boundedJSON(request)));
+   else if(path==='notifications'&&request.method==='DELETE')response=send(await deleteNotification(env.DB,me,await boundedJSON(request)));
    else if(path==='media'&&request.method==='GET')response=await readMedia(env.DB,env.MEDIA,url,me,request);
    else if(['avatar','cover'].includes(path)&&request.method==='POST')response=send(await upload(env.DB,env.MEDIA,request,me,path,env),201);
    else if(['avatar','cover'].includes(path)&&request.method==='DELETE')response=send(await removeMedia(env.DB,me,path));
