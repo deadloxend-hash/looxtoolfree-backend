@@ -6,7 +6,7 @@ import {reconcile} from '../lib/jobs.js';
 import {cloudOperations} from '../lib/image-cloud.js';
 import {cloudVideoOperations,cloudVideoStatus} from '../lib/video-cloud.js';
 import {migrateMediaBatch} from '../lib/r2-migration.js';
-import {userKey} from '../lib/media-store.js';
+import {cleanupInputs} from '../lib/input-cleanup.js';
 import {deleteR2Object} from '../lib/r2.js';
 export default handler(async(req,res)=>{
  method(req,'GET');
@@ -34,13 +34,12 @@ export default handler(async(req,res)=>{
   .then(()=>cloudVideoStatus({id:video.user_id},video.id))
   .then(value=>({status:'fulfilled',value}),reason=>({status:'rejected',reason})));
  const finished=await rows('jobs',{state:'in.(failed,succeeded)',inputs_clean:'eq.false',select:'id,user_id',limit:'200'});
- if(finished.length){
-  const prefixes=finished.flatMap(j=>['image','mask','target_image','swap_image','reference_image'].map(f=>j.user_id+'/'+j.id+'-'+f+'.png'));
-  await supa('/storage/v1/object/loox-results',{method:'DELETE',body:JSON.stringify({prefixes})});
-  const inputKeys=finished.flatMap(j=>['target_image','swap_image','reference_image','video-source','video-end','engine-start','engine-end'].map(f=>userKey(j.user_id,'inputs',j.id,'image/png','-'+f)));
-  for(let i=0;i<inputKeys.length;i+=10)await Promise.allSettled(inputKeys.slice(i,i+10).map(deleteR2Object));
-  await supa('/rest/v1/loox_jobs?id=in.('+finished.map(j=>j.id).join(',')+')',{method:'PATCH',body:JSON.stringify({inputs_clean:true})});
- }
+ const cleanup=await cleanupInputs(finished,{
+  removeLegacy:prefixes=>supa('/storage/v1/object/loox-results',{method:'DELETE',body:JSON.stringify({prefixes})}),
+  removeObject:deleteR2Object,
+  markClean:ids=>supa('/rest/v1/loox_jobs?id=in.('+ids.join(',')+')',{method:'PATCH',body:JSON.stringify({inputs_clean:true})})
+ });
+
  await supa('/rest/v1/loox_limits?expires_at=lt.'+encodeURIComponent(new Date().toISOString()),{method:'DELETE'});
- res.status(results.some(x=>x.status==='rejected')?503:200).json({checked:jobs.length+videos.length});
+ res.status(results.some(x=>x.status==='rejected')||cleanup.pending?503:200).json({checked:jobs.length+videos.length,cleanup_pending:cleanup.pending});
 },{cors:false});
